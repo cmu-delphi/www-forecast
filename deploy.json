@@ -15,8 +15,13 @@
       "add-header-comment": true
     },
     {
-      "type": "copy",
+      "type": "minimize-js",
       "src": "site/plot.js",
+      "dst": "site/plot.js_min"
+    },
+    {
+      "type": "copy",
+      "src": "site/plot.js_min",
       "dst": "/var/www/html/forecast/plot.js",
       "add-header-comment": true
     }
