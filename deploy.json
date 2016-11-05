@@ -1,0 +1,24 @@
+{
+  "type": "delphi deploy config",
+  "version": 1,
+  "actions": [
+    {
+      "type": "copy",
+      "src": "site/index.html",
+      "dst": "/var/www/html/forecast/index.html",
+      "add-header-comment": true
+    },
+    {
+      "type": "copy",
+      "src": "site/index.css",
+      "dst": "/var/www/html/forecast/index.css",
+      "add-header-comment": true
+    },
+    {
+      "type": "copy",
+      "src": "site/plot.js",
+      "dst": "/var/www/html/forecast/plot.js",
+      "add-header-comment": true
+    }
+  ]
+}

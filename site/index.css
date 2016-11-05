@@ -1,0 +1,67 @@
+h1 {
+  color: steelblue
+}
+
+h2 {
+  font: 24px sans-serif;
+  font-weight: bold;
+}
+
+h4{
+  font: 20px sans-serif;
+  font-weight: bold;
+}
+
+h3{
+  font: 16px sans-serif;
+}
+
+select{
+  width: auto;
+}
+
+.x-axis text, .y-axis text {
+  font: 10px sans-serif;
+}
+
+.label{
+  font: 10px sans-serif;
+}
+  
+.x-axis path, .x-axis line, .y-axis path, .y-axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.line{
+  fill: none;
+  stroke-width: 2;
+}
+
+.bar{
+  fill: SteelBlue;
+}
+
+body{
+  margin-top: 2%;
+}
+
+#map {
+  margin-top: 25%;
+}
+
+footer{ 
+  font: 10px sans-serif;
+  text-align: center;
+  margin-top: 1%;
+}
+
+#peak_point{
+  font: 14px sans-serif;
+}
+
+.dropdown_label{
+  font-weight: bold;
+}
+

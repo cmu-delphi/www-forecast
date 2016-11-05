@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+   <head>
+      <title>DELPHI Influenza Forecasting</title>
+      <!-- Make sure to import jQuery before the delphi library. -->
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0-alpha1/jquery.min.js"></script>      <!-- Our API code and documentation is on GitHub! https://github.com/cmu-delphi/delphi-epidata -->
+      <script type="text/javascript" src="delphi_epidata.js"></script>
+      <!-- Make sure to import delphi_epidata before the forecast loader. -->
+      <!-- <script type="text/javascript" src="delphi_forecast.js"></script> -->
+      <!-- D3 Library Import -->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
+      <!-- Latest compiled and minified CSS -->
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+      <!-- Latest compiled and minified JavaScript -->
+      <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+      <link rel='stylesheet' href = 'index.css'></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.min.js"></script>
+      <meta charset="UTF-8">
+      <meta name="description" content="DELPHI Influenza Forecasts">
+      <meta name="keywords" content="DELPHI, Carnegie Mellon, CMU, Influenza Forecasts, Flu, Flu Forecasts, Influenza, 
+      Forecasts, epidemiology">
+      <meta name="author" content="Kevin Reichek">
+   </head>
+   <body>
+      <script type="text/javascript" src="plot.js"></script>
+      <div class="container">
+        <div class="row">
+          <div class="col-md-3">
+          <a href="http://delphi.midas.cs.cmu.edu/">
+          <img alt="DELPHI Logo" src="http://i.imgur.com/KZpn6G6.png">
+          </a>
+            <h4>Settings</h4>
+            <div class = "dropdown_container" style = "display: inline-block:">
+              <span class = "dropdown_label">Geographic Scope</span>
+              <select id = "region_dropdown" class = "form-control" onchange="changeRegion(this.value)">
+                <option value="nat">National</option>
+                <option value="hhs1">Region 1 [CT, MA, ME, NH, RI, VT] </option>
+                <option value="hhs2">Region 2 [NJ, NY] </option>
+                <option value="hhs3">Region 3 [DE, MD, PA, VA, WV] </option>
+                <option value="hhs4">Region 4 [AL, FL, GA, KY, MS, NC, SC, TN] </option>
+                <option value="hhs5">Region 5 [IL, IN, MI, MN, OH, WI]</option>
+                <option value="hhs6">Region 6 [AR, LA, NM, OK, TX]</option>
+                <option value="hhs7">Region 7 [IA, KS, MO, NE]</option>
+                <option value="hhs8">Region 8 [CO, MT, ND, SD, UT, WY]</option>
+                <option value="hhs9">Region 9 [AZ, CA, HI, NV]</option>
+                <option value="hhs10">Region 10 [AK, ID, OR, WA]</option>
+              </select>
+            </div>
+            <div class = "dropdown_container">
+              <span class = "dropdown_label">Season to Forecast</span>
+              <select id = "season_dropdown" class = "form-control" onchange="changeSeason(this.value)">
+                <option value="2015">2015-2016 (Current)</option>
+                <option value="2014">2014-2015</option>
+              </select>
+            </div>
+            <div class = "dropdown_container">
+              <span class = "dropdown_label">Forecasting System</span>
+              <select id = "system_dropdown_2015" class = "form-control" onchange="changeSystem(this.value)">
+                <option rel = "2015" value="af">Archefilter</option>
+                <option rel = "2015" value="ec">Epicast</option>
+                <option selected rel = "2015" value="st">Stat</option>
+              </select>
+              <select id = "system_dropdown_2014" class = "form-control" onchange="changeSystem(this.value)">
+                <option selected rel = "2014" value="eb">Empirical Bayes</option>
+                <option rel = "2014" value="ec">Epicast</option>
+                <option rel = "2014" value="sp">Spline</option>
+              </select>
+            </div>
+            <div class="checkbox">
+              <label>
+                <input type="checkbox" onclick = "showConfidenceIntervals(this.checked)"> 
+                <span style = "font: 13px sans-serif;">Display Coverage Intervals (90% Level)</span>
+              </label>
+            </div>
+            <div id = "map">
+              <img src="http://www.hhs.gov/sites/default/files/iea/images/regionsmap.jpg" 
+              alt = "region map" style="width:290px;height:228px;">
+            </div>
+
+            </div>
+            <div id = "chart_container" class="col-md-9">
+                <h2><center><div id = "chart_title"><center></h2>
+                  <center>
+                      <h2><div id = "chart_title"></h2>
+                      <h3><div id = "chart_subtitle"></h3>
+                      <div id = "chart"></div>
+                      Use the left/right arrow keys to move the Prediction Week back/forward in time
+                      <a href="#" data-toggle="tooltip" data-placement="top" title="The Prediction Week refers to the week at 
+                      which the forecast is being made.  For example, if the Prediction Week is set to 45, then only the % 
+                      weighted ILI values in weeks 44 and earlier of the given season, and all data from past seasons, are 
+                      used in order to create the forecast.">(?)</a>
+                  </center>
+
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer>
+      Visualization tool courtesy of the <a href="http://delphi.midas.cs.cmu.edu/">DELPHI Group</a> at <a href = "http://www.cmu.edu/">Carnegie Mellon University</a>. Created by Kevin Reichek. Questions/feedback? Send us an <a href = "mailto:kreichek@cmu.edu?Subject=DELPHI Visualizer Feedback">email</a>.
+      </footer>
+    </body>
+  </html>
