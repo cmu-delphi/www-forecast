@@ -1,6 +1,6 @@
 {
   "type": "delphi deploy config",
-  "version": 2,
+  "version": 1,
   "actions": [
     {
       "type": "copy",
@@ -35,7 +35,7 @@
       "type": "copy",
       "src": "site/img/delphi_forecast.png",
       "dst": "/var/www/html/forecast/img/delphi_forecast.png",
-      "add-header-comment": true
+      "add-header-comment": false
     }
   ]
 }
