@@ -1,67 +1,91 @@
-h1 {
-  color: steelblue
-}
-
-h2 {
-  font: 24px sans-serif;
-  font-weight: bold;
-}
-
-h4{
-  font: 20px sans-serif;
-  font-weight: bold;
-}
-
-h3{
-  font: 16px sans-serif;
-}
-
-select{
-  width: auto;
-}
-
-.x-axis text, .y-axis text {
-  font: 10px sans-serif;
-}
-
-.label{
-  font: 10px sans-serif;
-}
-  
-.x-axis path, .x-axis line, .y-axis path, .y-axis line {
-  fill: none;
-  stroke: #000;
-  shape-rendering: crispEdges;
-}
-
-.line{
-  fill: none;
-  stroke-width: 2;
-}
-
-.bar{
-  fill: SteelBlue;
-}
-
 body{
-  margin-top: 2%;
+    font-family :"Trebuchet MS", Helvetica, sans-serif;
+    background-color: #222;
+    background-image: radial-gradient(#222 0%, #000 100%);
+    color: #eee;
+}
+#display_body{
+    margin-top:15px;
+    margin-left: 15px;
+}
+#control_col{
+    background: rgba(80,80,80,0.5);
+    border: 1px solid #aaa;
+    border-radius:5px;
+    padding:0;
+    overflow:hidden;
 }
 
-#map {
-  margin-top: 25%;
+#banner{
+    margin-left:0;
+    margin-right:0;
+    width:100%;
+    margin-bottom:5px;
+    opacity:0.9;
 }
 
-footer{ 
-  font: 10px sans-serif;
-  text-align: center;
-  margin-top: 1%;
+#banner>img{
+    width:100%;
 }
 
-#peak_point{
-  font: 14px sans-serif;
+.dropdown_container{
+    margin-left: 5px;
+    margin-right: 5px;
+    margin-bottom: 10px;
+}
+
+.checkbox {
+    margin-left: 10px;
+    margin-right: 5px;
+    margin-bottom: 10px;
 }
 
 .dropdown_label{
-  font-weight: bold;
+    display:block;
+    font-size:14px;
+    margin-top:4px;
+    margin-bottom:1px;
+    padding-left:2px;
+    font-weight:500;
 }
 
+#dropdown-btn{
+    width:100%;
+    background:#eee;
+    text-align:left;
+}
+
+#region_dropdown>li{
+    color: #000;
+    padding-left:5px;
+    cursor: pointer;
+}
+
+#region_dropdown>li:hover{
+    background: #2990FF;
+    color: #fff;
+}
+
+.form-control{
+    background: #eee;
+}
+
+#map_container{
+    margin-top:30px;
+    overflow:hidden;
+}
+
+#chart_container{
+    margin:0;
+}
+h2{
+    font-size:20px;
+    margin-top:0;
+    margin-bottom: 10px;
+    line-height:1.0;
+}
+
+h3{
+    margin:0;
+    font-size:18px;
+}

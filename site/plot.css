@@ -1,0 +1,35 @@
+.x-axis text, .y-axis text {
+  font: 10px sans-serif;
+  color: #ccc;
+}
+
+.label{
+  font: 10px sans-serif;
+  color: #ccc;
+}
+  
+.x-axis path, .x-axis line, .y-axis path, .y-axis line {
+  fill: none;
+  stroke: #ccc;
+  shape-rendering: crispEdges;
+}
+
+.line{
+  fill: none;
+  stroke-width: 2;
+}
+
+.bar{
+  fill: SteelBlue;
+}
+
+footer{ 
+  font: 10px sans-serif;
+  text-align: center;
+  margin-top: 1%;
+}
+
+#peak_point{
+  font: 14px sans-serif;
+}
+

@@ -1,102 +1,259 @@
-<!doctype html>
-<html>
-   <head>
-      <title>DELPHI Influenza Forecasting</title>
-      <!-- Make sure to import jQuery before the delphi library. -->
-      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0-alpha1/jquery.min.js"></script>      <!-- Our API code and documentation is on GitHub! https://github.com/cmu-delphi/delphi-epidata -->
-      <script type="text/javascript" src="delphi_epidata.js"></script>
-      <!-- Make sure to import delphi_epidata before the forecast loader. -->
-      <!-- <script type="text/javascript" src="delphi_forecast.js"></script> -->
-      <!-- D3 Library Import -->
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
-      <!-- Latest compiled and minified CSS -->
-      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
-      <!-- Latest compiled and minified JavaScript -->
-      <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
-      <link rel='stylesheet' href = 'index.css'></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.min.js"></script>
-      <meta charset="UTF-8">
-      <meta name="description" content="DELPHI Influenza Forecasts">
-      <meta name="keywords" content="DELPHI, Carnegie Mellon, CMU, Influenza Forecasts, Flu, Flu Forecasts, Influenza, 
-      Forecasts, epidemiology">
-      <meta name="author" content="Kevin Reichek">
-   </head>
-   <body>
-      <script type="text/javascript" src="plot.js"></script>
-      <div class="container">
-        <div class="row">
-          <div class="col-md-3">
-          <a href="http://delphi.midas.cs.cmu.edu/">
-          <img alt="DELPHI Logo" src="http://delphi.midas.cs.cmu.edu/images/delphi_static.png" width="264px">
-          </a>
-            <h4>Settings</h4>
-            <div class = "dropdown_container" style = "display: inline-block:">
-              <span class = "dropdown_label">Geographic Scope</span>
-              <select id = "region_dropdown" class = "form-control" onchange="changeRegion(this.value)">
-                <option value="nat">National</option>
-                <option value="hhs1">Region 1 [CT, MA, ME, NH, RI, VT] </option>
-                <option value="hhs2">Region 2 [NJ, NY] </option>
-                <option value="hhs3">Region 3 [DE, MD, PA, VA, WV] </option>
-                <option value="hhs4">Region 4 [AL, FL, GA, KY, MS, NC, SC, TN] </option>
-                <option value="hhs5">Region 5 [IL, IN, MI, MN, OH, WI]</option>
-                <option value="hhs6">Region 6 [AR, LA, NM, OK, TX]</option>
-                <option value="hhs7">Region 7 [IA, KS, MO, NE]</option>
-                <option value="hhs8">Region 8 [CO, MT, ND, SD, UT, WY]</option>
-                <option value="hhs9">Region 9 [AZ, CA, HI, NV]</option>
-                <option value="hhs10">Region 10 [AK, ID, OR, WA]</option>
-              </select>
-            </div>
-            <div class = "dropdown_container">
-              <span class = "dropdown_label">Season to Forecast</span>
-              <select id = "season_dropdown" class = "form-control" onchange="changeSeason(this.value)">
-                <option value="2015">2015-2016 (Current)</option>
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+<script src="http://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
+<script type="text/javascript" src="delphi_epidata.js"></script>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+<!-- Optional theme -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="js/us-map/lib/raphael.js"></script>
+<script src="js/us-map/jquery.usmap.js"></script>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.min.js"></script>
+<link rel='stylesheet' href='plot.css'></script>
+<link rel='stylesheet' href='index.css'></script>
+<meta charset="UTF-8">
+<meta name="description" content="DELPHI Influenza Forecasts">
+<meta name="keywords" content="DELPHI, Carnegie Mellon, CMU, Influenza Forecasts, Flu, Flu Forecasts, Influenza, 
+Forecasts, epidemiology">
+
+</head>
+<body>
+<script type="text/javascript" src="plot.js"></script>
+<div class="row" id="display_body">
+    <div class = "col-sm-3" id="control_col">
+        <div id="banner"><img src="delphi_forecast.png"></div>
+        <div class = "dropdown_container dropdown" style = "display: inline-block:">
+            <span class="dropdown_label">Geographic Scope</span>
+            <button class="btn btn-default dropdown-toggle" id="dropdown-btn" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                National
+                <span class="caret"></span>
+            </button>
+            <ul id="region_dropdown" class="dropdown-menu">
+                <li value="nat">National</li>
+                <li value="hhs1">Region 1 [CT, MA, ME, NH, RI, VT] </li>
+                <li value="hhs2">Region 2 [NJ, NY] </li>
+                <li value="hhs3">Region 3 [DE, MD, PA, VA, WV] </li>
+                <li value="hhs4">Region 4 [AL, FL, GA, KY, MS, NC, SC, TN] </li>
+                <li value="hhs5">Region 5 [IL, IN, MI, MN, OH, WI]</li>
+                <li value="hhs6">Region 6 [AR, LA, NM, OK, TX]</li>
+                <li value="hhs7">Region 7 [IA, KS, MO, NE]</li>
+                <li value="hhs8">Region 8 [CO, MT, ND, SD, UT, WY]</li>
+                <li value="hhs9">Region 9 [AZ, CA, HI, NV]</li>
+                <li value="hhs10">Region 10 [AK, ID, OR, WA]</li>
+            </ul>
+        </div>
+        <div class = "dropdown_container">
+            <span class = "dropdown_label">Season to Forecast</span>
+            <select id = "season_dropdown" class = "form-control" onchange="changeSeason(this.value)">
+                <option selected value="2016">2016-2017(Current)</option>
+                <option value="2015">2015-2016</option>
                 <option value="2014">2014-2015</option>
-              </select>
-            </div>
-            <div class = "dropdown_container">
-              <span class = "dropdown_label">Forecasting System</span>
-              <select id = "system_dropdown_2015" class = "form-control" onchange="changeSystem(this.value)">
+            </select>
+        </div>
+        <div class = "dropdown_container">
+            <span class = "dropdown_label">Forecasting System</span>
+            <select id = "system_dropdown_2016" class = "form-control"  onchange="changeSystem(this.value)">
+                <option selected rel = "2016" value="st">Stat</option>
+                <option rel = "2016" value="ec">Epicast</option>
+            </select>
+            <select id = "system_dropdown_2015" class = "form-control" style="display:none;" onchange="changeSystem(this.value)">
+                <option selected rel = "2015" value="st">Stat</option>
                 <option rel = "2015" value="af">Archefilter</option>
                 <option rel = "2015" value="ec">Epicast</option>
-                <option selected rel = "2015" value="st">Stat</option>
-              </select>
-              <select id = "system_dropdown_2014" class = "form-control" onchange="changeSystem(this.value)">
+            </select>
+            <select id = "system_dropdown_2014" class = "form-control" style="display:none;" onchange="changeSystem(this.value)">
                 <option selected rel = "2014" value="eb">Empirical Bayes</option>
                 <option rel = "2014" value="ec">Epicast</option>
                 <option rel = "2014" value="sp">Spline</option>
-              </select>
-            </div>
-            <div class="checkbox">
-              <label>
+            </select>
+        </div>
+        <div class="checkbox">
+            <label>
                 <input type="checkbox" onclick = "showConfidenceIntervals(this.checked)"> 
                 <span style = "font: 13px sans-serif;">Display Coverage Intervals (90% Level)</span>
-              </label>
-            </div>
-            <div id = "map">
-              <img src="http://www.hhs.gov/sites/default/files/iea/images/regionsmap.jpg" 
-              alt = "region map" style="width:290px;height:228px;">
-            </div>
-
-            </div>
-            <div id = "chart_container" class="col-md-9">
-                <h2><center><div id = "chart_title"><center></h2>
-                  <center>
-                      <h2><div id = "chart_title"></h2>
-                      <h3><div id = "chart_subtitle"></h3>
-                      <div id = "chart"></div>
-                      Use the left/right arrow keys to move the Prediction Week back/forward in time
-                      <a href="#" data-toggle="tooltip" data-placement="top" title="The Prediction Week refers to the week at 
-                      which the forecast is being made.  For example, if the Prediction Week is set to 45, then only the % 
-                      weighted ILI values in weeks 44 and earlier of the given season, and all data from past seasons, are 
-                      used in order to create the forecast.">(?)</a>
-                  </center>
-
-            </div>
-          </div>
+            </label>
         </div>
-      </div>
-      <footer>
-      Visualization tool courtesy of the <a href="http://delphi.midas.cs.cmu.edu/">DELPHI Group</a> at <a href = "http://www.cmu.edu/">Carnegie Mellon University</a>. Created by Kevin Reichek. Questions/feedback? Send us an <a href = "mailto:kreichek@cmu.edu?Subject=DELPHI Visualizer Feedback">email</a>.
-      </footer>
-    </body>
-  </html>
+        <div id="map_container"></div>
+    </div>
+    <div id = "chart_container" class="col-md-9">
+            <center>
+                <h2><div id = "chart_title"></h2>
+                <h3><div id = "chart_subtitle"></h3>
+                <div id = "chart"></div>
+                Use the left/right arrow keys to move the Prediction Week back/forward in time
+                <a href="#" data-toggle="tooltip" data-placement="top" title="The Prediction Week refers to the week at 
+                which the forecast is being made.  For example, if the Prediction Week is set to 45, then only the % 
+                weighted ILI values in weeks 44 and earlier of the given season, and all data from past seasons, are 
+                used in order to create the forecast.">(?)</a>
+            </center>
+    </div>
+</div>
+<footer>
+      Visualization tool courtesy of the <a href="http://delphi.midas.cs.cmu.edu/">DELPHI Group</a> at <a href = "http://www.cmu.edu/">Carnegie Mellon University</a>. Created by Kevin Reichek. Maintained by Lisheng Gao. Questions/feedback? Send us an <a href = "mailto:lishengg@andrew.cmu.edu?Subject=DELPHI Visualizer Feedback">email</a>.
+</footer>
+<script>
+// Create a map object based on usmap library
+var mapInfo = {
+    regionColors:['#5c7981', '#643c18', '#b2721a', '#dbd543', '#679a61', '#e28e45', '#508dac', '#a48f70', '#9dcbdb', '#d99b9c'],
+    regionStates: [
+      ['CT', 'MA', 'ME', 'NH', 'RI', 'VT', ],
+      ['NJ', 'NY', ],
+      ['DE', 'MD', 'PA', 'VA', 'WV', ],
+      ['AL', 'FL', 'GA', 'KY', 'MS', 'NC', 'SC', 'TN', ],
+      ['IL', 'IN', 'MI', 'MN', 'OH', 'WI', ],
+      ['AR', 'LA', 'TX', 'NM', 'OK', ],
+      ['IA', 'KS', 'MO', 'NE', ],
+      ['CO', 'MT', 'ND', 'SD', 'UT', 'WY', ],
+      ['AZ', 'CA', 'HI', 'NV', ],
+      ['AK', 'ID', 'OR', 'WA', ],
+    ],
+}
+
+
+function mapObject(container, mapInfoClass){
+    this.width = $("#control_col").width()*1.1;
+    // Keep map same dimension as in Epicast
+    this.height = this.width * 5 / 7;
+    this.container_div = container;
+    $(this.container_div).append('<div id="map" style="width: '+this.width.toString()+'px; height: '+this.height.toString()+'px; margin-left: auto; margin-right: auto;">');
+    // Adjust the height of the map
+    $(this.container_div).height(this.height*0.85);
+    
+    this.map_div = $("map");
+    this.colors = mapInfoClass.regionColors;
+    this.regions = mapInfoClass.regionStates;
+    
+    // Active region controls the style of map
+    this.activeRegion = 0;
+    
+    // Preset style: colored with opacity 0.5
+    this.defaultStyle = {};
+    for(var i = 0; i < this.regions.length; i++) {
+        for(var j = 0; j < this.regions[i].length; j++) {
+            this.defaultStyle[this.regions[i][j]] = {fill: this.colors[i], opacity:0.5};
+        }
+    }
+    
+    // Style setting for the map
+    this.mapStyle = {
+        showLabels: false,
+        labelTextStyles: {'color': 'black', 'font-weight': 'bold'},
+        stateStyles: {'stroke-width': 1, 'stroke':'#fff'},
+        // Use JSON for deep copy
+        stateSpecificStyles: (JSON.parse(JSON.stringify(this.defaultStyle))),
+        stateSpecificLabelBackingStyles: {},
+        stateHoverStyles: {}
+    };
+    
+    this.regionToStates = function(rid){
+        return this.regions[rid];
+    };
+    
+    this.stateToRegion = function(state){
+        for(var i = 0; i< this.regions.length;i++) {
+            if(this.regions[i].indexOf(state)!=-1)
+                return i;
+        }
+        return -1;
+    };
+    
+    this.resetMap = function(){
+        $(this.container_div).empty();
+        this.width = $("#control_col").width()*1.1;
+        // Keep map same dimension as in Epicast
+        this.height = this.width * 5 / 7;
+        this.container_div = container;
+        $(this.container_div).append('<div id="map" style="width:'+this.width.toString()+'px; height: '+this.height.toString()+'px; margin-left: auto; margin-right:auto;">');
+    };
+    
+    this.colorMap = function(region) {
+        this.resetMap();
+        this.mapStyle.stateSpecificStyles = (JSON.parse(JSON.stringify(this.defaultStyle)));
+        
+        if(region!=null)
+        {
+            if(region==0)
+            {
+                // Nation-wide
+                for(var i = 0; i< this.regions.length; i++)
+                {
+                    for(var j = 0; j < this.regions[i].length; j++) {
+                        this.mapStyle.stateSpecificStyles[this.regions[i][j]] = {fill: this.colors[i], opacity: 1.0};
+                    }
+                }
+            }
+            else
+            {
+                // Highlight current region
+                for(var j = 0; j < this.regions[region-1].length; j++) {
+                    this.mapStyle.stateSpecificStyles[this.regions[region-1][j]] = {fill: this.colors[region-1], opacity: 1.0};
+                }
+            }
+        }
+        
+        
+        // Set style for current selection
+        if(this.activeRegion!=0)
+        {
+            for(var j = 0; j < this.regions[this.activeRegion-1].length; j++){
+                this.mapStyle.stateSpecificStyles[this.regions[this.activeRegion-1][j]] ={fill: this.colors[this.activeRegion-1], opacity: 1.0, 'stroke-width': 1.5};
+            }
+        }
+        else if(region==null)
+        {
+            // Nation-wide
+            for(var i = 0; i< this.regions.length; i++)
+            {
+                for(var j = 0; j < this.regions[i].length; j++) {
+                    this.mapStyle.stateSpecificStyles[this.regions[i][j]] = {fill: this.colors[i], opacity: 1.0};
+                }
+            }
+        }
+        
+        $('#map').usmap(this.mapStyle);
+    };
+
+    this.clearMap = function(){
+        this.colorMap();
+    };
+}
+var mapObj = new mapObject($('#map_container'),mapInfo);
+
+// Listener
+$('#region_dropdown>li').on('mouseenter',function(event){
+    event.preventDefault();
+    var i = $(this).index();
+    mapObj.colorMap(i);
+});
+
+$('#region_dropdown>li').on('mouseleave',function(event){
+    event.preventDefault();
+    mapObj.colorMap();
+});
+
+$('#region_dropdown>li').on('click',function(event){
+    var i = $(this).index();
+    mapObj.activeRegion = i;
+    mapObj.colorMap();
+    // Change button text
+    $("#dropdown-btn").html($(this).html()+'<span class="caret"></span>');
+    changeRegion($(this).attr('value'));
+});
+
+
+$( window ).resize(function() {
+    determine_dim();
+    $("#main_chart").remove();
+    reloadChart();
+    mapObj.colorMap();
+    loadData();
+});
+
+$(document).ready(function() {
+    mapObj.clearMap();
+});
+</script>
