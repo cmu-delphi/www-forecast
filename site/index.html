@@ -2,30 +2,31 @@
 <meta charset="utf-8">
 <head>
 <script src="http://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
-<script type="text/javascript" src="delphi_epidata.js"></script>
+<script type="text/javascript" src="/epidata/lib/delphi_epidata.min.js"></script>
 <!-- Latest compiled and minified CSS -->
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 <!-- Optional theme -->
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
 <!-- Latest compiled and minified JavaScript -->
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
-<script src="js/us-map/lib/raphael.js"></script>
-<script src="js/us-map/jquery.usmap.js"></script>
+<script src="/epicast/js/us-map/lib/raphael.js"></script>
+<script src="/epicast/js/us-map/jquery.usmap.js"></script>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.min.js"></script>
-<link rel='stylesheet' href='plot.css'></script>
-<link rel='stylesheet' href='index.css'></script>
+<link rel='stylesheet' href='style/plot.css'></script>
+<link rel='stylesheet' href='style/index.css'></script>
 <meta charset="UTF-8">
 <meta name="description" content="DELPHI Influenza Forecasts">
 <meta name="keywords" content="DELPHI, Carnegie Mellon, CMU, Influenza Forecasts, Flu, Flu Forecasts, Influenza, 
 Forecasts, epidemiology">
+<meta name="author" content="Kevin Reichek, Lisheng Gao">
 
 </head>
 <body>
-<script type="text/javascript" src="plot.js"></script>
+<script type="text/javascript" src="js/plot.js"></script>
 <div class="row" id="display_body">
     <div class = "col-sm-3" id="control_col">
-        <div id="banner"><img src="delphi_forecast.png"></div>
+        <a href="http://delphi.midas.cs.cmu.edu/"><div id="banner"><img src="img/delphi_forecast.png"></div></a>
         <div class = "dropdown_container dropdown" style = "display: inline-block:">
             <span class="dropdown_label">Geographic Scope</span>
             <button class="btn btn-default dropdown-toggle" id="dropdown-btn" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">

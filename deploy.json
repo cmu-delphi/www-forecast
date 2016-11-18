@@ -1,6 +1,6 @@
 {
   "type": "delphi deploy config",
-  "version": 1,
+  "version": 2,
   "actions": [
     {
       "type": "copy",
@@ -10,19 +10,31 @@
     },
     {
       "type": "copy",
-      "src": "site/index.css",
-      "dst": "/var/www/html/forecast/index.css",
+      "src": "site/style/index.css",
+      "dst": "/var/www/html/forecast/style/index.css",
+      "add-header-comment": true
+    },
+    {
+      "type": "copy",
+      "src": "site/style/plot.css",
+      "dst": "/var/www/html/forecast/style/plot.css",
       "add-header-comment": true
     },
     {
       "type": "minimize-js",
-      "src": "site/plot.js",
-      "dst": "site/plot.js_min"
+      "src": "site/js/plot.js",
+      "dst": "site/js/plot.js_min"
     },
     {
       "type": "copy",
-      "src": "site/plot.js_min",
-      "dst": "/var/www/html/forecast/plot.js",
+      "src": "site/js/plot.js_min",
+      "dst": "/var/www/html/forecast/js/plot.js",
+      "add-header-comment": true
+    },
+    {
+      "type": "copy",
+      "src": "site/img/delphi_forecast.png",
+      "dst": "/var/www/html/forecast/img/delphi_forecast.png",
       "add-header-comment": true
     }
   ]
