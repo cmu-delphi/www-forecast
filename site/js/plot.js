@@ -1,4 +1,44 @@
 forecast = {};
+sysObj = function(id,startWeek,endWeek){
+    this.id = id;
+    this.startWeek = startWeek;
+    this.endWeek = endWeek;
+}
+
+sys_meta = {
+    y14:{
+        year:2014,
+        sys:[new sysObj('eb',201441,201519), new sysObj('ec',201441,201519), new sysObj('sp',201441,201519)],
+        lastWeekInYear: 201453,
+        iliCoverage:[201439,201521]
+    },
+    y15:{
+        year:2015,
+        sys:[new sysObj('st',201542,201619), new sysObj('af',201541,201619), new sysObj('ec',201541,201619)],
+        lastWeekInYear: 201552,
+        iliCoverage:[201539,201621]
+        
+    },
+    y16:{
+        year:2016,
+        sys:[new sysObj('st',201643,null), new sysObj('ec',201643,null)],
+        lastWeekInYear: 201652,
+        iliCoverage:[201641,201646]
+    }
+};
+
+function setCurrentSeason(data){
+    for (var i in data) {
+        if(data[i].system=='st')
+        {
+            sys_meta.y16.sys[0].endWeek = data[i].last_week;
+        }
+        else if(data[i].system=='ec')
+        {
+            sys_meta.y16.sys[1].endWeek = data[i].last_week;
+        }
+    }
+}
 margin = {top: 10, right: 20, bottom: 50, left: 25};
 
 // Green #008C44 #00783A
@@ -17,41 +57,17 @@ Season = function(yr,num_weeks,sys_list){
     this.num_weeks = num_weeks;
     this.systems = sys_list;
 };
-
-/*
-For each year, here keeps the prediction period for each systems same.
-2014: 201442-201519 31wks
-2015: 201542-201619 30wks
-2016: 201642-?
- */
-function weekIdToEpiweek(year, week_id) {
-    if (year==2016){
-        if(week_id<10)
-            return year*100+(43+week_id);
-        else
-            return (++year)*100 + (week_id - 9);
-    }
-    var carry = year == 2014 ? 1 : 0;
-    if (week_id - carry < 11) {
-        return year * 100 + (42 + week_id);
-    }
-    else {
-        return (++year)*100 + (week_id - 10 - carry);
-    }
-}
+ 
 function initalization(){
     // initialize doc size
     determine_dim();
 
     // init vis parameters
-    forecast.system = 'st';
+    forecast.season = sys_meta.y16;
+    forecast.sys = forecast.season.sys[0];
+    forecast.epiweek = forecast.sys.startWeek;
     forecast.region = 'nat';
-    // forecast.season - an object contains info for current season
-    forecast.season = forecast.season_list[2];
-    forecast.week_id = 0;
-    // forecast.epiweek - week in form YYYYWW(int)
-    forecast.epiweek = weekIdToEpiweek(forecast.season.year, forecast.week_id);
-    forecast.showConfidenceIntervals = false;
+    forecast.showConfidenceIntervals = true;
 
     forecast.max_height = {
         "nat" : 8,
@@ -71,16 +87,20 @@ function initalization(){
 // Callback functions for dropdowns
 function changeWeek(change){
     //Don't change week if at the bounds
-    if (forecast.week_id + change < 0 ||
-        forecast.week_id + change >= forecast.season.num_weeks){
+    if (forecast.epiweek + change < forecast.sys.startWeek || forecast.epiweek + change > forecast.sys.endWeek){
         return;
     }
     //Otherwise shift over in the right direction
     else{
-        forecast.week_id += change;
-        forecast.epiweek = weekIdToEpiweek(forecast.season.year,forecast.week_id);
+        forecast.epiweek += change;
+        if(forecast.epiweek%100>forecast.season.lastWeekInYear%100){
+            forecast.epiweek = forecast.epiweek-forecast.epiweek%100+101;
+        }
+        else if(forecast.epiweek%100==0){
+            forecast.epiweek = forecast.season.lastWeekInYear;
+        }
     }
-
+    
     loadData();
 }
 
@@ -90,40 +110,51 @@ function showConfidenceIntervals(checked){
 }
 
 function changeSeason(season){
-    forecast.season = season;
+    var curr_sys = forecast.sys.id;
     if (season == 2014){
-        forecast.season = forecast.season_list[0];
+        forecast.season = sys_meta.y14;
         $("#system_dropdown_2015").hide();
         $("#system_dropdown_2016").hide();
         $("#system_dropdown_2014").show();
     }
     if (season == 2015){
-        forecast.season = forecast.season_list[1];
+        forecast.season = sys_meta.y15;
         $("#system_dropdown_2014").hide();
         $("#system_dropdown_2016").hide();
         $("#system_dropdown_2015").show()
     }
     else if(season == 2016){
-        forecast.season = forecast.season_list[2];
+        forecast.season = sys_meta.y16;
         $("#system_dropdown_2014").hide();
         $("#system_dropdown_2015").hide();
         $("#system_dropdown_2016").show();
     }
-
-    forecast.week_id = 0;
-    if (parseInt(forecast.season.systems.indexOf(forecast.system))==-1){
-        forecast.system = forecast.season.systems[0]; // restore default system for the year
-    }
+    forecast.epiweek = season*100+41;
+    // Set system
+    changeSystem(curr_sys);
     // change the dropdown
     var dropdown_id = '#system_dropdown_'+forecast.season.year;
-    $(dropdown_id).val(forecast.system).change();
-    
-    forecast.epiweek = weekIdToEpiweek(forecast.season.year,forecast.week_id);
+    $(dropdown_id).val(forecast.sys.id).change();
     loadData();
 }
 
 function changeSystem(system){
-    forecast.system = system;
+    // Set to default first
+    forecast.sys = forecast.season.sys[0];
+    
+    for(var i in forecast.season.sys){
+        if(forecast.season.sys[i].id==system)
+        {
+            forecast.sys = forecast.season.sys[i];
+            break;
+        }
+    }
+    // Check whether epiweek is in range
+    if(forecast.epiweek<forecast.sys.startWeek)
+        forecast.epiweek=forecast.sys.startWeek;
+    else if(forecast.epiweek>forecast.sys.endWeek)
+        forecast.epiweek=forecast.sys.endWeek;
+        
     loadData();
 }
 
@@ -142,7 +173,7 @@ function getChartTitle(){
 }
 
 function getSubChartTitle(){
-    return "Prediction Week: " + weekIdToEpiweek(forecast.season.year,forecast.week_id).toString();
+    return "Prediction Week: "+(Math.floor(forecast.epiweek/100))+"wk"+(forecast.epiweek%100);
 }
 
 function loadData(){
@@ -155,8 +186,9 @@ function loadData(){
             return;
         }
         else{
-            var start = forecast.season.year + "40";
-            var end = weekIdToEpiweek(forecast.season.year, forecast.season.num_weeks).toString();
+            //
+            var start = forecast.season.iliCoverage[0];
+            var end = forecast.season.iliCoverage[1];
 
             Epidata.fluview(function(result, info, past_data){
                 if (!result){
@@ -168,7 +200,7 @@ function loadData(){
             }, forecast.region, Epidata.range(start, end),
                     issues = end);
         }
-    }, forecast.system, forecast.epiweek);
+    }, forecast.sys.id, forecast.epiweek);
 }
 
 // Data parsing functions; will be kept intact --Lisheng
@@ -190,27 +222,43 @@ function weeksInYear(y) {
 }
 
 function determineInterval(data, bin_size, point){
-    var index = 0;
-    var area = 0;
-    var accuracy = 0.0001;
-    while (area < 0.1){
-        area += data[Math.floor(index)] * accuracy;
-        index += accuracy;
+    var lowerArea = 0;
+    var lowerBound;
+    var thres = 0.05;
+    for(var i=0;i<data.length;i++){
+        lowerArea += data[i];
+        if(lowerArea>=thres)
+        {
+            //Interpolation to find exact position
+            var prevA = lowerArea - data[i];
+            lowerBound = i-1+(thres-prevA)/data[i];
+            lowerBound = Math.max(lowerBound,0);
+            break;
+        }
     }
-    var lower_bound = index;
-    area = 0;
-    index = data.length - accuracy;
-    while (area < 0.1){
-        area += data[Math.floor(index)] * accuracy
-        index -= accuracy;
+    
+    var upperArea = 0;
+    var upperBound;
+    for(var i=data.length-1;i>0;i--){
+        upperArea += data[i];
+        if(upperArea>=thres)
+        {
+            //Interpolation to find exact position
+            var prevA = upperArea - data[i];
+            upperBound = i+1-(thres-prevA)/data[i];
+            upperBound = Math.min(upperBound,data.length-1);
+            break;
+        }
     }
-    var upper_bound = index;
+    
     //Dealing with highest bin being infinity
-    if (Math.floor(upper_bound) == data.length - 1){
+    /*
+    if (upperBound == data.length - 1){
         var infinity_bin_size = 2.5;
-        upper_bound += (upper_bound % 1) * infinity_bin_size
+        upperBound += (upperBound % 1) * infinity_bin_size
     }
-    result = [(lower_bound * bin_size), (upper_bound * bin_size)];
+    */
+    var result = [(lowerBound * bin_size), (upperBound * bin_size)];
     return result;
 }
 
@@ -234,7 +282,7 @@ function processData(full_data, trendline){
     var ili_bins = full_data[0].forecast.ili_bins;
     var lines = {};
     forecast.baselines = full_data[0].forecast.baselines;
-    forecast.num_weeks = full_data[0].forecast.year_weeks;
+    forecast.num_weeks = full_data[0].forecast.season.year_weeks;
     lines.trendline = [];
     for (var i = 0; i < trendline.length; i++){
             var week = getWeek(trendline[i].epiweek);
@@ -614,29 +662,6 @@ function visualizeData(lines){
 
 }
 
-// Hard code the number of weeks in a epi-season
-yearToWeeks = {
-    2014:31,
-    2015:32
-};
-
-function getSeasonList(data){
-    // Also hard code seasons
-    var s2014 = new Season(2014,31,['eb','ec','sp']);
-    var s2015 = new Season(2015,30,['st','af','ec']);
-    var s2016 = new Season(2016,-1,['st','ec']);
-    for (var i in data) {
-        // Dynamically get current weeks for season 2016
-        if(data[i].last_week>=201643){
-            var weeks=data[i].last_week>201700?11+data[i].last_week%100:data[i].last_week-201642;
-            if(s2016.num_weeks==-1 || s2016.num_weeks>weeks) {
-                s2016.num_weeks = weeks;
-            }
-        }
-    }
-    return [s2014,s2015,s2016];
-}
-
 // Read in meta data
 $(document).ready(function(){
     Epidata.meta(function(a, b, data){
@@ -646,8 +671,7 @@ $(document).ready(function(){
             forecast.start_end[data[i].system] = {"first": data[i].first_week, 
             "last": data[i].last_week, "weeks": data[i].num_weeks};
         }
-
-        forecast.season_list = getSeasonList(data);
+        setCurrentSeason(data);
         initalization();
         //script_on_page();
         reloadChart();
