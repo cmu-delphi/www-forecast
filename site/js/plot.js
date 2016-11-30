@@ -23,7 +23,7 @@ sys_meta = {
         year:2016,
         sys:[new sysObj('st',201643,null), new sysObj('ec',201643,null)],
         lastWeekInYear: 201652,
-        iliCoverage:[201641,201646]
+        iliCoverage:[201641,null]
     }
 };
 
@@ -665,12 +665,8 @@ function visualizeData(lines){
 // Read in meta data
 $(document).ready(function(){
     Epidata.meta(function(a, b, data){
-        forecast.start_end = {};
+        sys_meta.y16.iliCoverage[1] = data[0].fluview[0].latest_issue;
         data = data[0].delphi;
-        for (var i = 0; i < data.length; i++){
-            forecast.start_end[data[i].system] = {"first": data[i].first_week, 
-            "last": data[i].last_week, "weeks": data[i].num_weeks};
-        }
         setCurrentSeason(data);
         initalization();
         //script_on_page();
