@@ -50,6 +50,7 @@ actual_line_color = "#68C8F7";
 actual_circle_color = "#1499DB";
 text_color = "#ccc";
 conf_area_color = "#FCFF9C";
+onset_color = "#FF3B8C";
 
 // Define global params here
 Season = function(yr,num_weeks,sys_list){
@@ -222,44 +223,66 @@ function weeksInYear(y) {
 }
 
 function determineInterval(data, bin_size, point){
-    var lowerArea = 0;
-    var lowerBound;
-    var thres = 0.05;
-    for(var i=0;i<data.length;i++){
-        lowerArea += data[i];
-        if(lowerArea>=thres)
-        {
-            //Interpolation to find exact position
-            var prevA = lowerArea - data[i];
-            lowerBound = i-1+(thres-prevA)/data[i];
-            lowerBound = Math.max(lowerBound,0);
+    var precision = 0.9;
+    var centerBin = Math.floor(point/bin_size);
+    
+    var accuProb = data[centerBin];
+    var l_step = 1;
+    var r_step = 1;
+    var last_dir = -1; // 0 if moved left; 1 if moved right
+    while(accuProb<precision){
+        if(centerBin-l_step<0 && centerBin+r_step>=data.length){
+            // sum < 0.9
+            last_dir = 2;
             break;
+        }
+        // add a bin from left or right
+        if(centerBin-l_step>=0 
+        &&(centerBin+r_step>=data.length || data[centerBin-l_step]>=data[centerBin+r_step]) ){
+            // Move left
+            accuProb += data[centerBin-l_step];
+            l_step += 1;
+            last_dir = 0;
+        }
+        else{
+            // Move right
+            accuProb += data[centerBin+r_step];
+            r_step += 1;
+            last_dir = 1;
         }
     }
     
-    var upperArea = 0;
-    var upperBound;
-    for(var i=data.length-1;i>=0;i--){
-        upperArea += data[i];
-        if(upperArea>=thres)
-        {
-            //Interpolation to find exact position
-            var prevA = upperArea - data[i];
-            upperBound = i+1-(thres-prevA)/data[i];
-            upperBound = Math.min(upperBound,data.length-1);
-            break;
-        }
+    // Interpolation
+    var lowerBound, upperBound;
+    if(last_dir == -1){
+        // Add interpolation for better effect
+        lowerBound = centerBin+0.5-(precision/data[centerBin]);
+        upperBound = centerBin+0.5+(precision/data[centerBin]);
     }
-    
-    //Dealing with highest bin being infinity
-    /*
-    if (upperBound == data.length - 1){
-        var infinity_bin_size = 2.5;
-        upperBound += (upperBound % 1) * infinity_bin_size
+    else if(last_dir==2){
+        lowerBound = centerBin - l_step + 1;
+        upperBound = centerBin + r_step;
     }
-    */
+    else if(last_dir == 0){
+        lowerBound = centerBin - l_step + 1 + (accuProb-precision)/data[centerBin - l_step + 1];
+        upperBound = centerBin + r_step;
+    }
+    else{
+        lowerBound = centerBin - l_step + 1; 
+        upperBound = centerBin + r_step - (accuProb-precision)/data[centerBin + r_step - 1];
+    }
     var result = [(lowerBound * bin_size), (upperBound * bin_size)];
     return result;
+}
+
+// from natural week to week id (wk39-wk19? next year)
+function peakweekCast(week, year){
+    if(week<39){
+        return week+weeksInYear(year)-39;
+    }
+    else{
+        return week-39;
+    }
 }
 
 function getWeek(epiweek){
@@ -308,21 +331,23 @@ function processData(full_data, trendline){
         forecast.season.year = forecast.season.year.toString();
         lines.confidenceInterval.push({"x" : getWeek(forecast.season.year + date), "lower" : interval[0], "upper" : interval[1]});
     }
+    
+    // Peakweek
     var peakweek = data.peakweek.point;
-    var peakweek_year = determineYear(parseInt(data.peakweek.point), parseInt(forecast.season.year));
-    var peakweek = getWeek(peakweek_year.toString() + peakweek.toString());
-    lines.peak = [peakweek, data.peak.point];
-    var peakweek_point;
-    if (data.peak.point < 21)
-        peakweek_point = (weeksInYear(forecast.season.year) - 40) + data.peak.point;
-    else
-        peakweek_point = data.peak.point - 40;
-    var ili_interval = determineInterval(data.peak.dist, ili_bin_size, data.peak.point);
-    var week_interval = determineInterval(data.peakweek.dist, 1, peakweek_point);
-    week_interval[0] = (39 + week_interval[0]);
-    week_interval[1] = (39 + week_interval[1]);
-    lines.peak_time_interval = [[week_interval[0],data.peak.point], [week_interval[1], data.peak.point]];
-    lines.peak_ili_interval = [[peakweek, ili_interval[0]], [peakweek, ili_interval[1]]];
+    var peakweekId = peakweekCast(peakweek, forecast.season.year);
+    lines.peak = [peakweekId+39, data.peak.point];
+    var peak_ili_interval = determineInterval(data.peak.dist, ili_bin_size, data.peak.point);
+    var peakweek_interval = determineInterval(data.peakweek.dist, 1, peakweekId);
+    lines.peak_time_interval = [[peakweek_interval[0]+39,data.peak.point], [peakweek_interval[1]+39, data.peak.point]];
+    lines.peak_ili_interval = [[peakweekId+39, peak_ili_interval[0]], [peakweekId+39, peak_ili_interval[1]]];
+    
+    // Onset
+    var onsetWeek = data.onset.point;
+    var onsetWeekId = peakweekCast(onsetWeek, forecast.season.year);
+    lines.onset = [onsetWeekId+39];
+    var onsetweek_interval = determineInterval(data.onset.dist, 1, onsetWeekId);
+    lines.onsetweek_interval = [[onsetweek_interval[0]+39,data.onset.point], [onsetweek_interval[1]+39, data.onset.point]];
+
     visualizeData(lines);
 }
 
@@ -360,14 +385,14 @@ function createLegend(){
 
     plotChart.append("circle")
         .attr("cx", xLoc - 15)
-        .attr("cy", 20)
+        .attr("cy", 30)
         .attr("r", 4)
         .attr("fill", actual_circle_color)
         .attr("class", "perm");
 
     plotChart.append("text")
         .attr("x", xLoc)
-        .attr("y", 22.5)
+        .attr("y", 32.5)
         .text("Actual")
         .attr("fill", text_color)
         .attr("font-size", "10px")
@@ -392,7 +417,7 @@ function createLegend(){
 
     plotChart.append("text")
         .attr("x", xLoc - 15)
-        .attr("y", 85)
+        .attr("y", 74.5)
         .text("X")
         .attr("fill", predict_circle_color)
         .attr("font-size", "14px")
@@ -402,8 +427,27 @@ function createLegend(){
 
     plotChart.append("text")
         .attr("x", xLoc)
-        .attr("y", 82)
+        .attr("y", 72.5)
         .text("Predicted Peak")
+        .attr("fill", text_color)
+        .attr("font-size", "10px")
+        .attr("text-anchor", "start")
+        .attr("class", "perm");
+        
+    plotChart.append("text")
+        .attr("x", xLoc - 15)
+        .attr("y", 94.5)
+        .text("o")
+        .attr("fill", onset_color)
+        .attr("font-size", "14px")
+        .attr("text-anchor", "middle")
+        .attr("font-weight", "bold")
+        .attr("class", "perm");
+
+    plotChart.append("text")
+        .attr("x", xLoc)
+        .attr("y", 92.5)
+        .text("Predicted Onset")
         .attr("fill", text_color)
         .attr("font-size", "10px")
         .attr("text-anchor", "start")
@@ -539,8 +583,26 @@ function visualizeData(lines){
                      return yScale(d[1]);
                     })
                  .interpolate("linear");
-
+    
+    plotChart.append("path")
+             .datum(lines.trendline)
+             .attr("class", "line")
+             .attr("d", line)
+             .attr("stroke", actual_line_color);
+    
+    
+    // baseline
+    plotChart.append("svg:line")
+             .attr("x1", 0)
+             .attr("x2", width)
+             .attr("y1", yScale(forecast.baselines[forecast.region]))
+             .attr("y2", yScale(forecast.baselines[forecast.region]))
+             .style("stroke", "#eee")
+             .style("stroke-opacity", 0.9)
+             .style("stroke-dasharray", ("3, 3"));
+             
     if (forecast.showConfidenceIntervals){
+        // Prediction interval
         plotChart.append("path")
                  .datum(lines.confidenceInterval)
                  .attr("class", "confidence")
@@ -556,7 +618,8 @@ function visualizeData(lines){
                  .attr("y1", yScale(lines.peak_ili_interval[0][1]))
                  .attr("y2", yScale(lines.peak_ili_interval[1][1]))
                  .attr("stroke", predict_line_color)
-                 .attr("stroke-width", "1.5");
+                 .attr("stroke-width", "1.5")
+                 .style("stroke-dasharray", ("3, 3"));
         
         plotChart.append("svg:line")
                  .attr("x1", xScale(lines.peak_time_interval[0][0]))
@@ -564,7 +627,8 @@ function visualizeData(lines){
                  .attr("y1", yScale(lines.peak_time_interval[0][1]))
                  .attr("y2", yScale(lines.peak_time_interval[1][1]))
                  .attr("stroke", predict_line_color)
-                 .attr("stroke-width", "1.5");
+                 .attr("stroke-width", "1.5")
+                 .style("stroke-dasharray", ("3, 3"));
                          
         plotChart.append("svg:line")
                  .attr("x1", xScale(lines.peak_ili_interval[0][0]) - 5)
@@ -597,14 +661,33 @@ function visualizeData(lines){
                  .attr("y2", yScale(lines.peak_time_interval[1][1]) + 5)
                  .attr("stroke", predict_line_color)
                  .attr("stroke-width", "1.5");
+                 
+        // onset interval
+        plotChart.append("svg:line")
+                 .attr("x1", xScale(lines.onsetweek_interval[0][0]))
+                 .attr("x2", xScale(lines.onsetweek_interval[1][0]))
+                 .attr("y1", yScale(forecast.baselines[forecast.region]))
+                 .attr("y2", yScale(forecast.baselines[forecast.region]))
+                 .attr("stroke", onset_color)
+                 .attr("stroke-width", "1.5");
+                 
+        plotChart.append("svg:line")
+                 .attr("x1", xScale(lines.onsetweek_interval[0][0]))
+                 .attr("x2", xScale(lines.onsetweek_interval[0][0]))
+                 .attr("y1", yScale(forecast.baselines[forecast.region]) - 5)
+                 .attr("y2", yScale(forecast.baselines[forecast.region]) + 5)
+                 .attr("stroke", onset_color)
+                 .attr("stroke-width", "1.5");
+
+        plotChart.append("svg:line")
+                 .attr("x1", xScale(lines.onsetweek_interval[1][0]))
+                 .attr("x2", xScale(lines.onsetweek_interval[1][0]))
+                 .attr("y1", yScale(forecast.baselines[forecast.region]) - 5)
+                 .attr("y2", yScale(forecast.baselines[forecast.region]) + 5)
+                 .attr("stroke", onset_color)
+                 .attr("stroke-width", "1.5");
 
     }
-
-    plotChart.append("path")
-             .datum(lines.trendline)
-             .attr("class", "line")
-             .attr("d", line)
-             .attr("stroke", actual_line_color);
 
     plotChart.append("path")
              .datum(lines.forecast)
@@ -614,21 +697,22 @@ function visualizeData(lines){
     
     plotChart.append("text")
              .attr("x", xScale(lines.peak[0]))
-             .attr("y", yScale(lines.peak[1]) + 6.5)
+             .attr("y", yScale(lines.peak[1]) + 4.5)
              .text("X")
              .attr("fill", predict_line_color)
-             .attr("font-size", "20px")
+             .attr("font-size", "18px")
+             .attr("text-anchor", "middle")
+             .attr("font-weight", "bold")
+    
+    // onset
+    plotChart.append("text")
+             .attr("x", xScale(lines.onset[0]))
+             .attr("y", yScale(forecast.baselines[forecast.region])+4.5)
+             .text("o")
+             .attr("fill", onset_color)
+             .attr("font-size", "18px")
              .attr("text-anchor", "middle")
              .attr("font-weight", "bold");
-
-    plotChart.append("svg:line")
-             .attr("x1", 0)
-             .attr("x2", width)
-             .attr("y1", yScale(forecast.baselines[forecast.region]))
-             .attr("y2", yScale(forecast.baselines[forecast.region]))
-             .style("stroke", "#eee")
-             .style("stroke-opacity", 0.9)
-             .style("stroke-dasharray", ("3, 3"));
 
     var circleData = [];
     var temp;
@@ -682,11 +766,6 @@ function script_on_page(){
         $(this).parents(".dropdown").find('.btn').html($(this).text() + ' <span class="caret"></span>');
         $(this).parents(".dropdown").find('.btn').val($(this).data('value'));
     });
-    /*
-    $("#season_dropdown").change(function(){
-        $("#system_dropdown option").hideOption();
-        $("#system_dropdown").find("option[rel*='" + this.value + "']").showOption();
-    }).change();*/
     
     $('[data-toggle="tooltip"]').tooltip(); 
 }
@@ -742,16 +821,3 @@ function weekButtonControl(){
         }
     });
 }
-/*
-$(document).on('keydown', 'select', function(event) {
-        event.preventDefault();
-        var value = $(this).find('option:selected').val();
-        if ((event.which == 37 || event.which === 39)) {
-                setTimeout(function (obj, val) {
-                                return function() {
-                                        obj.find('option[value="' + val + '"]').prop("selected", true)
-                                }
-                }($(this), value), 0);
-        }
-});
-*/
