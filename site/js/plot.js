@@ -46,11 +46,12 @@ margin = {top: 10, right: 20, bottom: 50, left: 25};
 // Blue #68C8F7 #1499DB
 predict_line_color = "#FAFF61";
 predict_circle_color = "#FAD400";
-actual_line_color = "#68C8F7";
+actual_line_color = "#14B2FF";
 actual_circle_color = "#1499DB";
 text_color = "#ccc";
+latest_ili_color = "#ccc";
 conf_area_color = "#FCFF9C";
-onset_color = "#FF3B8C";
+onset_color = "#FFA85C";
 
 // Define global params here
 Season = function(yr,num_weeks,sys_list){
@@ -180,6 +181,7 @@ function getSubChartTitle(){
 function loadData(){
     $("#chart_title").text(getChartTitle());
     $("#chart_subtitle").text(getSubChartTitle());
+    var forecast_data, curr_ili, latest_ili;
     Epidata.delphi(function(result, info, data) {
         if (!result) {
             // If loading fails, `data` is a string with the reason
@@ -187,21 +189,33 @@ function loadData(){
             return;
         }
         else{
-            //
+            forecast_data = data;
             var start = forecast.season.iliCoverage[0];
             var end = forecast.season.iliCoverage[1];
 
-            Epidata.fluview(function(result, info, past_data){
+            Epidata.fluview(function(result, info, curr_issue){
                 if (!result){
                     alert('ForecastLoader says: ' + data);
                 }
                 else{
-                    processData(data, past_data);
+                    curr_ili = curr_issue;
+                    Epidata.fluview(function(result, info, latest_issue){
+                        if (!result){
+                            alert('ForecastLoader says: ' + data);
+                        }
+                        // Add latest ili
+                        else{
+                            latest_ili = latest_issue;
+                            processData(forecast_data, curr_ili, latest_ili);
+                        }
+                    }, forecast.region, Epidata.range(start, end),
+                            issues = end);
                 }
             }, forecast.region, Epidata.range(start, end),
-                    issues = end);
+                    issues = forecast.epiweek);
         }
     }, forecast.sys.id, forecast.epiweek);
+    
 }
 
 // Data parsing functions; will be kept intact --Lisheng
@@ -293,25 +307,32 @@ function getWeek(epiweek){
     return week;
 }
 
-function processData(full_data, trendline){
-    var data = full_data[0].forecast.data[forecast.region];
-    var ili_bin_size = full_data[0].forecast.ili_bin_size;
-    var ili_bins = full_data[0].forecast.ili_bins;
+function processData(forecast_ili, curr_ili, latest_ili){
+    var data = forecast_ili[0].forecast.data[forecast.region];
+    var ili_bin_size = forecast_ili[0].forecast.ili_bin_size;
+    var ili_bins = forecast_ili[0].forecast.ili_bins;
     var lines = {};
-    forecast.baselines = full_data[0].forecast.baselines;
-    forecast.num_weeks = full_data[0].forecast.season.year_weeks;
-    lines.trendline = [];
-    for (var i = 0; i < trendline.length; i++){
-            var week = getWeek(trendline[i].epiweek);
-            lines.trendline.push([week, trendline[i].wili]);
+    forecast.baselines = forecast_ili[0].forecast.baselines;
+    forecast.num_weeks = forecast_ili[0].forecast.season.year_weeks;
+    lines.currIli = [];
+    for (var i = 0; i < curr_ili.length; i++){
+            var week = getWeek(curr_ili[i].epiweek);
+            lines.currIli.push([week, curr_ili[i].wili]);
     }
+    
+    lines.latestIli = [];
+    for (var i = 0; i < latest_ili.length; i++){
+            var week = getWeek(latest_ili[i].epiweek);
+            lines.latestIli.push([week, latest_ili[i].wili]);
+    }
+    
     lines.forecast = [];
     lines.confidenceInterval = []
-    for (var i = 0; i < trendline.length; i++){
-        if (trendline[i].epiweek == forecast.epiweek){
-            var temp = getWeek(trendline[i].epiweek);
-            lines.forecast.push([temp, trendline[i].wili]);
-            lines.confidenceInterval.push({"x": temp, "lower" : trendline[i].wili, "upper" : trendline[i].wili});
+    for (var i = 0; i < curr_ili.length; i++){
+        if (curr_ili[i].epiweek == forecast.epiweek){
+            var temp = getWeek(curr_ili[i].epiweek);
+            lines.forecast.push([temp, curr_ili[i].wili]);
+            lines.confidenceInterval.push({"x": temp, "lower" : curr_ili[i].wili, "upper" : curr_ili[i].wili});
             break;
         }
     }
@@ -375,19 +396,36 @@ function reloadChart(){
 }
 
 function createLegend(){
-    var xLoc = width - 100;
-
-    plotChart.append("circle")
-        .attr("cx", xLoc - 15)
-        .attr("cy", 30)
-        .attr("r", 4)
-        .attr("fill", actual_circle_color)
-        .attr("class", "perm");
+    var xLoc = width - 150;
+    plotChart.append("svg:line")
+                 .attr("x1", xLoc-20)
+                 .attr("x2", xLoc-10)
+                 .attr("y1", 30)
+                 .attr("y2", 30)
+                 .attr("stroke", actual_line_color)
+                 .attr("stroke-width", "1.5");
 
     plotChart.append("text")
         .attr("x", xLoc)
         .attr("y", 32.5)
-        .text("Actual")
+        .text("WILI estimates at prediction time")
+        .attr("fill", text_color)
+        .attr("font-size", "10px")
+        .attr("text-anchor", "start")
+        .attr("class", "perm");
+    
+    plotChart.append("svg:line")
+                 .attr("x1", xLoc-20)
+                 .attr("x2", xLoc-10)
+                 .attr("y1", 50)
+                 .attr("y2", 50)
+                 .attr("stroke", latest_ili_color)
+                 .attr("stroke-width", "1.5");
+
+    plotChart.append("text")
+        .attr("x", xLoc)
+        .attr("y", 52.5)
+        .text("Latest wILI")
         .attr("fill", text_color)
         .attr("font-size", "10px")
         .attr("text-anchor", "start")
@@ -395,15 +433,15 @@ function createLegend(){
 
     plotChart.append("circle")
         .attr("cx", xLoc - 15)
-        .attr("cy", 50)
+        .attr("cy", 70)
         .attr("r", 4)
         .attr("fill", predict_circle_color)
         .attr("class", "perm");
 
     plotChart.append("text")
         .attr("x", xLoc)
-        .attr("y", 52.5)
-        .text("Predicted")
+        .attr("y", 72.5)
+        .text("Predicted wILI")
         .attr("fill", text_color)
         .attr("font-size", "10px")
         .attr("text-anchor", "start")
@@ -411,9 +449,9 @@ function createLegend(){
 
     plotChart.append("text")
         .attr("x", xLoc - 15)
-        .attr("y", 74.5)
+        .attr("y", 94.5)
         .text("X")
-        .attr("fill", predict_circle_color)
+        .attr("fill", predict_line_color)
         .attr("font-size", "14px")
         .attr("text-anchor", "middle")
         .attr("font-weight", "bold")
@@ -421,7 +459,7 @@ function createLegend(){
 
     plotChart.append("text")
         .attr("x", xLoc)
-        .attr("y", 72.5)
+        .attr("y", 92.5)
         .text("Predicted Peak")
         .attr("fill", text_color)
         .attr("font-size", "10px")
@@ -430,7 +468,7 @@ function createLegend(){
         
     plotChart.append("text")
         .attr("x", xLoc - 15)
-        .attr("y", 94.5)
+        .attr("y", 114.5)
         .text("o")
         .attr("fill", onset_color)
         .attr("font-size", "14px")
@@ -440,7 +478,7 @@ function createLegend(){
 
     plotChart.append("text")
         .attr("x", xLoc)
-        .attr("y", 92.5)
+        .attr("y", 112.5)
         .text("Predicted Onset")
         .attr("fill", text_color)
         .attr("font-size", "10px")
@@ -549,7 +587,7 @@ function visualizeData(lines){
              .attr("width", widthValue)
              .attr("height", height)
              .attr("fill", "white")
-             .attr("opacity", "0.2");
+             .attr("opacity", "0.1");
 
         pastRect.append("text")
                 .attr("class", "label")
@@ -579,7 +617,13 @@ function visualizeData(lines){
                  .interpolate("linear");
     
     plotChart.append("path")
-             .datum(lines.trendline)
+             .datum(lines.latestIli)
+             .attr("class", "line")
+             .attr("d", line)
+             .attr("stroke", latest_ili_color);
+             
+    plotChart.append("path")
+             .datum(lines.currIli)
              .attr("class", "line")
              .attr("d", line)
              .attr("stroke", actual_line_color);
@@ -603,7 +647,7 @@ function visualizeData(lines){
                  .attr("d", confidenceArea)
                  .attr("stroke", "")
                  .attr("fill", conf_area_color)
-                 .attr("opacity", "0.25");
+                 .attr("opacity", "0.1");
         
         // Peak interval
         plotChart.append("svg:line")
@@ -711,18 +755,20 @@ function visualizeData(lines){
     var circleData = [];
     var temp;
     //Hack to fix circle issue
-    if (lines.trendline.length > 2){
+    if (lines.currIli.length > 2){
         for (i = 0; i < 2; i++){
-            temp = lines.trendline[i];
+            temp = lines.currIli[i];
             temp.push(actual_circle_color);
             circleData.push(temp);
         }
     }
-    for (i = 0; i < lines.trendline.length; i++){
-        temp = lines.trendline[i];
+    /*
+    for (i = 0; i < lines.currIli.length; i++){
+        temp = lines.currIli[i];
         temp.push(actual_circle_color);
         circleData.push(temp);
     }
+    */
     for (i = 1; i < lines.forecast.length; i++){
         temp = lines.forecast[i];
         temp.push(predict_circle_color);
