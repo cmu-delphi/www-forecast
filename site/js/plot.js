@@ -199,6 +199,14 @@ function loadData(){
                 }
                 else{
                     curr_ili = curr_issue;
+                    var issue_time;
+                    if(forecast.season.year==2016){
+                        issue_time = sys_meta.y16.iliCoverage[1];
+                    }
+                    else{
+                        var y = parseInt(forecast.season.year)+1;
+                        issue_time = y*100+30;
+                    }
                     Epidata.fluview(function(result, info, latest_issue){
                         if (!result){
                             alert('ForecastLoader says: ' + data);
@@ -209,7 +217,7 @@ function loadData(){
                             processData(forecast_data, curr_ili, latest_ili);
                         }
                     }, forecast.region, Epidata.range(start, end),
-                            issues = end);
+                            issues = issue_time);
                 }
             }, forecast.region, Epidata.range(start, end),
                     issues = forecast.epiweek);
@@ -397,6 +405,14 @@ function reloadChart(){
 
 function createLegend(){
     var xLoc = width - 150;
+    var final_ili_text;
+    if(forecast.season.year == 2016){
+        final_ili_text = "Latest issue of wILI(at "+Math.floor(sys_meta.y16.iliCoverage[1]/100)+"wk"+sys_meta.y16.iliCoverage[1]%100+")";
+    }
+    else{
+        var y = parseInt(forecast.season.year)+1;
+        final_ili_text = "Finalized wILI(at "+y+"wk30)"
+    }
     plotChart.append("svg:line")
                  .attr("x1", xLoc-20)
                  .attr("x2", xLoc-10)
@@ -408,7 +424,7 @@ function createLegend(){
     plotChart.append("text")
         .attr("x", xLoc)
         .attr("y", 32.5)
-        .text("WILI estimates at prediction time")
+        .text("wILI estimates at prediction time")
         .attr("fill", text_color)
         .attr("font-size", "10px")
         .attr("text-anchor", "start")
@@ -425,7 +441,7 @@ function createLegend(){
     plotChart.append("text")
         .attr("x", xLoc)
         .attr("y", 52.5)
-        .text("Latest wILI")
+        .text(final_ili_text)
         .attr("fill", text_color)
         .attr("font-size", "10px")
         .attr("text-anchor", "start")
@@ -460,7 +476,7 @@ function createLegend(){
     plotChart.append("text")
         .attr("x", xLoc)
         .attr("y", 92.5)
-        .text("Predicted Peak")
+        .text("Predicted peak")
         .attr("fill", text_color)
         .attr("font-size", "10px")
         .attr("text-anchor", "start")
@@ -479,7 +495,7 @@ function createLegend(){
     plotChart.append("text")
         .attr("x", xLoc)
         .attr("y", 112.5)
-        .text("Predicted Onset")
+        .text("Predicted onset")
         .attr("fill", text_color)
         .attr("font-size", "10px")
         .attr("text-anchor", "start")
