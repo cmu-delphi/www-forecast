@@ -769,7 +769,7 @@ function visualizeData(lines){
         circleData.push(temp);
     }
     */
-    for (i = 1; i < lines.forecast.length; i++){
+    for (var i = 0; i < lines.forecast.length; i++){
         temp = lines.forecast[i];
         temp.push(predict_circle_color);
         circleData.push(temp);
