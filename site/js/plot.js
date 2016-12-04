@@ -755,6 +755,7 @@ function visualizeData(lines){
     var circleData = [];
     var temp;
     //Hack to fix circle issue
+    /*
     if (lines.currIli.length > 2){
         for (i = 0; i < 2; i++){
             temp = lines.currIli[i];
@@ -762,7 +763,6 @@ function visualizeData(lines){
             circleData.push(temp);
         }
     }
-    /*
     for (i = 0; i < lines.currIli.length; i++){
         temp = lines.currIli[i];
         temp.push(actual_circle_color);
