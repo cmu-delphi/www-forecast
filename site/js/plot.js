@@ -223,30 +223,28 @@ function weeksInYear(y) {
 }
 
 function determineInterval(data, bin_size, point){
-    var precision = 0.9;
+    var precision = 0.75;
     var centerBin = Math.floor(point/bin_size);
-    
-    var accuProb = data[centerBin];
+    var sum = 0;
+    for (var i in data){
+        sum += data[i];
+    }
+    var accuProb = data[centerBin]/sum;
     var l_step = 1;
     var r_step = 1;
     var last_dir = -1; // 0 if moved left; 1 if moved right
     while(accuProb<precision){
-        if(centerBin-l_step<0 && centerBin+r_step>=data.length){
-            // sum < 0.9
-            last_dir = 2;
-            break;
-        }
         // add a bin from left or right
         if(centerBin-l_step>=0 
         &&(centerBin+r_step>=data.length || data[centerBin-l_step]>=data[centerBin+r_step]) ){
             // Move left
-            accuProb += data[centerBin-l_step];
+            accuProb += data[centerBin-l_step]/sum;
             l_step += 1;
             last_dir = 0;
         }
         else{
             // Move right
-            accuProb += data[centerBin+r_step];
+            accuProb += data[centerBin+r_step]/sum;
             r_step += 1;
             last_dir = 1;
         }
@@ -258,10 +256,6 @@ function determineInterval(data, bin_size, point){
         // Add interpolation for better effect
         lowerBound = centerBin+0.5-(precision/data[centerBin]);
         upperBound = centerBin+0.5+(precision/data[centerBin]);
-    }
-    else if(last_dir==2){
-        lowerBound = centerBin - l_step + 1;
-        upperBound = centerBin + r_step;
     }
     else if(last_dir == 0){
         lowerBound = centerBin - l_step + 1 + (accuProb-precision)/data[centerBin - l_step + 1];
