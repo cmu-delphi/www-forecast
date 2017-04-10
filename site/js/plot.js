@@ -60,21 +60,21 @@ Season = function(yr,num_weeks,sys_list){
     this.systems = sys_list;
 };
  
-function initalization(){
+function initialization(){
     // initialize doc size
     determine_dim();
 
     // init vis parameters
     forecast.season = sys_meta.y16;
     forecast.sys = forecast.season.sys[0];
-    forecast.epiweek = forecast.sys.startWeek;
+    forecast.epiweek = forecast.sys.endWeek;
     forecast.region = 'nat';
     forecast.showConfidenceIntervals = true;
 
     forecast.max_height = {
         "nat" : 8,
         "hhs1" : 6,
-        "hhs2" : 6,
+        "hhs2" : 10,
         "hhs3" : 10,
         "hhs4" : 10,
         "hhs5" : 9,
@@ -134,6 +134,9 @@ function changeSeason(season){
     forecast.epiweek = season*100+41;
     // Set system
     changeSystem(curr_sys);
+    if(season == 2016){
+        forecast.epiweek = forecast.sys.endWeek;
+    }
     // change the dropdown
     var dropdown_id = '#system_dropdown_'+forecast.season.year;
     $(dropdown_id).val(forecast.sys.id).change();
@@ -808,7 +811,7 @@ $(document).ready(function(){
         sys_meta.y16.iliCoverage[1] = data[0].fluview[0].latest_issue;
         data = data[0].delphi;
         setCurrentSeason(data);
-        initalization();
+        initialization();
         //script_on_page();
         reloadChart();
         weekButtonControl();
