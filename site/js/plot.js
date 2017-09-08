@@ -21,9 +21,9 @@ sys_meta = {
     },
     y16:{
         year:2016,
-        sys:[new sysObj('st',201643,null), new sysObj('ec',201643,null)],
+        sys:[new sysObj('st',201643,201720), new sysObj('ec',201643,201720)],
         lastWeekInYear: 201652,
-        iliCoverage:[201641,null]
+        iliCoverage:[201641,201721]
     }
 };
 
@@ -31,11 +31,11 @@ function setCurrentSeason(data){
     for (var i in data) {
         if(data[i].system=='st')
         {
-            sys_meta.y16.sys[0].endWeek = data[i].last_week;
+            sys_meta.y16.sys[0].endWeek = Math.min(sys_meta.y16.sys[0].endWeek,data[i].last_week);
         }
         else if(data[i].system=='ec')
         {
-            sys_meta.y16.sys[1].endWeek = data[i].last_week;
+            sys_meta.y16.sys[1].endWeek = Math.min(sys_meta.y16.sys[1].endWeek,data[i].last_week);
         }
     }
 }
@@ -204,6 +204,7 @@ function loadData(){
                     curr_ili = curr_issue;
                     var issue_time;
                     if(forecast.season.year==2016){
+                        var y = parseInt(forecast.season.year)+1;
                         issue_time = Math.min(sys_meta.y16.iliCoverage[1],y*100+30);
                     }
                     else{
@@ -808,7 +809,8 @@ function visualizeData(lines){
 // Read in meta data
 $(document).ready(function(){
     Epidata.meta(function(a, b, data){
-        sys_meta.y16.iliCoverage[1] = data[0].fluview[0].latest_issue;
+        sys_meta.y16.iliCoverage[1] =
+            Math.min(data[0].fluview[0].latest_issue,sys_meta.y16.iliCoverage[1]);
         data = data[0].delphi;
         setCurrentSeason(data);
         initialization();
