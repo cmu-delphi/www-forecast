@@ -204,7 +204,7 @@ function loadData(){
                     curr_ili = curr_issue;
                     var issue_time;
                     if(forecast.season.year==2016){
-                        issue_time = min(sys_meta.y16.iliCoverage[1],y*100+30);
+                        issue_time = Math.min(sys_meta.y16.iliCoverage[1],y*100+30);
                     }
                     else{
                         var y = parseInt(forecast.season.year)+1;
