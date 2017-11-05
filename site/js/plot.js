@@ -1,44 +1,19 @@
-forecast = {};
-sysObj = function(id,startWeek,endWeek){
-    this.id = id;
-    this.startWeek = startWeek;
-    this.endWeek = endWeek;
-}
-
-sys_meta = {
-    y14:{
-        year:2014,
-        sys:[new sysObj('eb',201441,201519), new sysObj('ec',201441,201519), new sysObj('sp',201441,201519)],
-        lastWeekInYear: 201453,
-        iliCoverage:[201439,201521]
-    },
-    y15:{
-        year:2015,
-        sys:[new sysObj('st',201542,201619), new sysObj('af',201541,201619), new sysObj('ec',201541,201619)],
-        lastWeekInYear: 201552,
-        iliCoverage:[201539,201621]
-
-    },
-    y16:{
-        year:2016,
-        sys:[new sysObj('st',201643,201720), new sysObj('ec',201643,201720)],
-        lastWeekInYear: 201652,
-        iliCoverage:[201641,201721]
-    }
+// global forecast instance contains all controlling parameters
+forecast = {
+    // season object that contains season's meta info
+    season:null,
+    // contains the delphi system displayed
+    sys:null,
+    // current epiweek(at point of prediction)
+    epiweek:null,
+    // current region/state
+    region:null,
+    showConfidenceIntervals:null,
+    // max for y axis in different regions
+    max_height:null,
 };
 
-function setCurrentSeason(data){
-    for (var i in data) {
-        if(data[i].system=='st')
-        {
-            sys_meta.y16.sys[0].endWeek = Math.min(sys_meta.y16.sys[0].endWeek,data[i].last_week);
-        }
-        else if(data[i].system=='ec')
-        {
-            sys_meta.y16.sys[1].endWeek = Math.min(sys_meta.y16.sys[1].endWeek,data[i].last_week);
-        }
-    }
-}
+// parameters for ui
 margin = {top: 10, right: 20, bottom: 50, left: 25};
 
 // Green #008C44 #00783A
@@ -53,19 +28,88 @@ latest_ili_color = "#ccc";
 conf_area_color = "#FCFF9C";
 onset_color = "#FFA85C";
 
-// Define global params here
-Season = function(yr,num_weeks,sys_list){
-    this.year = yr;
-    this.num_weeks = num_weeks;
-    this.systems = sys_list;
+// forecast system object
+sysObj = function(id,startWeek,endWeek){
+    this.id = id;
+    this.startWeek = startWeek;
+    this.endWeek = endWeek;
+}
+
+// hard-coded current season (starting year)
+curr_season = 2016;
+// season meta information
+season_meta = new Map([
+    [
+      2014,
+      {
+        year:2014,
+        sys:[new sysObj('eb',201441,201519), new sysObj('ec',201441,201519), new sysObj('sp',201441,201519)],
+        lastWeekInYear: 201453,
+        iliCoverage:[201439,201521]
+      }
+    ],
+    [
+      2015,
+      {
+        year:2015,
+        sys:[new sysObj('st',201542,201619), new sysObj('af',201541,201619), new sysObj('ec',201541,201619)],
+        lastWeekInYear: 201552,
+        iliCoverage:[201539,201621]
+
+      }
+    ],
+    [
+      2016,
+      {
+        year:2016,
+        sys:[new sysObj('st',201643,201720), new sysObj('ec',201643,201720)],
+        lastWeekInYear: 201652,
+        iliCoverage:[201641,201721]
+      }
+    ],
+]);
+
+// Read in meta data and initialize the tool
+$(document).ready(function(){
+    Epidata.meta(function(a, b, data){
+        setCurrentSeason(data);
+        initialization();
+        //script_on_page();
+        reloadChart();
+        weekButtonControl();
+        loadData();
+    });
+});
+
+// using the meta data to check latest available prediction
+function setCurrentSeason(data){
+    var latest_season = season_meta.get(curr_season);
+    var flu_latest_issue = data[0].fluview[0].latest_issue;
+    var data_delphi = data[0].delphi;
+    latest_season.iliCoverage[1] =
+        Math.min(flu_latest_issue,latest_season.iliCoverage[1]);
+
+    for (var i in data_delphi) {
+        var sys = data_delphi[i].system;
+        for (var j in latest_season.sys){
+            if (sys == latest_season.sys[j].id){
+                latest_season.sys[j].endWeek = Math.min(
+                    latest_season.sys[j].endWeek, data_delphi[i].last_week
+                );
+                break;
+            }
+        }
+    }
+    season_meta.set(curr_season,latest_season);
 };
 
 function initialization(){
     // initialize doc size
-    determine_dim();
+    determineCanvas();
 
     // init vis parameters
-    forecast.season = sys_meta.y16;
+    // set season to latest one
+    forecast.season = season_meta.get(curr_season);
     forecast.sys = forecast.season.sys[0];
     forecast.epiweek = forecast.sys.endWeek;
     forecast.region = 'nat';
@@ -112,35 +156,31 @@ function showConfidenceIntervals(checked){
 }
 
 function changeSeason(season){
-    var curr_sys = forecast.sys.id;
-    if (season == 2014){
-        forecast.season = sys_meta.y14;
-        $("#system_dropdown_2015").hide();
-        $("#system_dropdown_2016").hide();
-        $("#system_dropdown_2014").show();
-    }
-    if (season == 2015){
-        forecast.season = sys_meta.y15;
-        $("#system_dropdown_2014").hide();
-        $("#system_dropdown_2016").hide();
-        $("#system_dropdown_2015").show()
-    }
-    else if(season == 2016){
-        forecast.season = sys_meta.y16;
-        $("#system_dropdown_2014").hide();
-        $("#system_dropdown_2015").hide();
-        $("#system_dropdown_2016").show();
-    }
-    forecast.epiweek = season*100+41;
+    season = parseInt(season);
+    forecast.season = season_meta.get(season);
+    $("[id^=system_dropdown_]").each(function(index){
+        var ele_id = $(this).attr('id');
+        if(ele_id.search(season)!=-1) {
+            $(this).show();
+        }
+        else {
+            $(this).hide();
+        }
+    });
+
     // Set system
+    forecast.epiweek = season*100+41;
+    var curr_sys = forecast.sys.id;
     changeSystem(curr_sys);
-    if(season == 2016){
+    if(season == curr_season){
         forecast.epiweek = forecast.sys.endWeek;
     }
     // change the dropdown
-    var dropdown_id = '#system_dropdown_'+forecast.season.year;
+    var dropdown_id = '#system_dropdown_'+forecast.season.year.toString();
     $(dropdown_id).val(forecast.sys.id).change();
+
     loadData();
+
 }
 
 function changeSystem(system){
@@ -155,10 +195,8 @@ function changeSystem(system){
         }
     }
     // Check whether epiweek is in range
-    if(forecast.epiweek<forecast.sys.startWeek)
-        forecast.epiweek=forecast.sys.startWeek;
-    else if(forecast.epiweek>forecast.sys.endWeek)
-        forecast.epiweek=forecast.sys.endWeek;
+    forecast.epiweek = Math.max(forecast.epiweek,forecast.sys.startWeek);
+    forecast.epiweek = Math.min(forecast.epiweek,forecast.sys.endWeek);
 
     loadData();
 }
@@ -173,7 +211,7 @@ function getChartTitle(){
         region = "National";
     else
         region = "Region " + forecast.region.replace("hhs", "");
-    year = forecast.season.year.toString() + "-" + (parseInt(forecast.season.year) + 1).toString();
+    year = forecast.season.year.toString() + "-" + (forecast.season.year + 1).toString();
     return (region + " Influenza Forecast, " + year)
 }
 
@@ -184,53 +222,64 @@ function getSubChartTitle(){
 function loadData(){
     $("#chart_title").text(getChartTitle());
     $("#chart_subtitle").text(getSubChartTitle());
+    var start = forecast.season.iliCoverage[0];
+    var end = forecast.season.iliCoverage[1];
     var forecast_data, curr_ili, latest_ili;
-    Epidata.delphi(function(result, info, data) {
-        if (!result) {
-            // If loading fails, `data` is a string with the reason
-            alert('ForecastLoader says: ' + data);
-            return;
-        }
-        else{
-            forecast_data = data;
-            var start = forecast.season.iliCoverage[0];
-            var end = forecast.season.iliCoverage[1];
+    var y, issue_time;
 
-            Epidata.fluview(function(result, info, curr_issue){
-                if (!result){
-                    alert('ForecastLoader says: ' + data);
+    // check whether stable wili is available
+    if(forecast.season.year==curr_season){
+        y = forecast.season.year+1;
+        issue_time = Math.min(forecast.season.iliCoverage[1],y*100+30);
+    }
+    else{
+        y = forecast.season.year+1;
+        issue_time = y*100+30;
+    }
+
+    // load data in parallel
+    Promise.all([
+        // load delphi forecasts
+        Epidata.delphi(
+            function(result, info, data) {
+                if (!result) {
+                    // If loading fails, `data` is a string with the reason
+                    alert('ForecastLoader says: ' + data)
                 }
                 else{
-                    curr_ili = curr_issue;
-                    var issue_time;
-                    if(forecast.season.year==2016){
-                        var y = parseInt(forecast.season.year)+1;
-                        issue_time = Math.min(sys_meta.y16.iliCoverage[1],y*100+30);
-                    }
-                    else{
-                        var y = parseInt(forecast.season.year)+1;
-                        issue_time = y*100+30;
-                    }
-                    Epidata.fluview(function(result, info, latest_issue){
-                        if (!result){
-                            alert('ForecastLoader says: ' + data);
-                        }
-                        // Add latest ili
-                        else{
-                            latest_ili = latest_issue;
-                            processData(forecast_data, curr_ili, latest_ili);
-                        }
-                    }, forecast.region, Epidata.range(start, end),
-                            issues = issue_time);
+                    forecast_data = data;
                 }
-            }, forecast.region, Epidata.range(start, end),
-                    issues = forecast.epiweek);
-        }
-    }, forecast.sys.id, forecast.epiweek);
+            },
+            forecast.sys.id, forecast.epiweek
+        ),
+        // load latest ili/wili
+        Epidata.fluview(
+            function(result, info, latest_issue){
+                if (!result){
+                    alert('ForecastLoader says: ' + result);
+                }
+                else{
+                    latest_ili = latest_issue;
+                }
+            },
+            forecast.region, Epidata.range(start, end), issues = issue_time
+        ),
+        // load current issue of ili/wili
+        Epidata.fluview(function(result, info, curr_issue){
+            if (!result){
+                alert('ForecastLoader says: ' + result);
+            }
+            else{
+                curr_ili = curr_issue;
+            }
+        }, forecast.region, Epidata.range(start, end),issues = forecast.epiweek)
+    ]).then(function(){
+        processData(forecast_data, curr_ili, latest_ili);}
+    );
 
 }
 
-// Data parsing functions; will be kept intact --Lisheng
+// Data parsing functions
 function determineYear(week, season){
     if (week < 21){
         return moment(season, "YYYY").add(1, 'years').year();
@@ -241,11 +290,10 @@ function determineYear(week, season){
 }
 
 function weeksInYear(y) {
-    y = y.toString();
-    if (y == "2014")
+    if ([4, 9, 15, 20, 26].indexOf(y%28)>=0){
         return 53;
-    else
-        return 52;
+    }
+    return 52;
 }
 
 function determineInterval(data, bin_size, point){
@@ -314,7 +362,7 @@ function getWeek(epiweek){
         var week = parseInt(epiweek.toString().substring(4,6));
     }
     if (week < 30){
-        week += parseInt(weeksInYear(forecast.season.year));
+        week += weeksInYear(forecast.season.year);
     }
     return week;
 }
@@ -353,10 +401,12 @@ function processData(forecast_ili, curr_ili, latest_ili){
     for (i = 0; i < xs.length; i++){
         var datapoint = data[xs[i]];
         var interval = determineInterval(datapoint.dist, ili_bin_size, datapoint.point);
-        var date = getWeek(forecast.season.year + (week + i + 1).toString());
+        var date = getWeek((forecast.season.year).toString()+(week + i + 1).toString());
         lines.forecast.push([date, datapoint.point]);
-        forecast.season.year = forecast.season.year.toString();
-        lines.confidenceInterval.push({"x" : getWeek(forecast.season.year + date), "lower" : interval[0], "upper" : interval[1]});
+        lines.confidenceInterval.push({
+            "x" : getWeek((forecast.season.year).toString() + date),
+            "lower" : interval[0], "upper" : interval[1]
+        });
     }
 
     // Peakweek
@@ -378,40 +428,33 @@ function processData(forecast_ili, curr_ili, latest_ili){
     visualizeData(lines);
 }
 
-// Visualization functions; will be kept intact --Lisheng
-function determine_dim(){
-    width = Math.round(window.innerWidth * 0.66) - margin.left - margin.right;
-    height = Math.round(window.innerHeight * 0.73) - margin.top - margin.bottom;
-    min_height = 400;
-    min_width = 550;
-    max_height = 500;
-    max_width = 800;
-
-    if (width < min_width)
-        width = min_width;
-    if (height < min_height)
-        height = min_height;
-    if (width > max_width)
-        width = max_width;
-    if (height > max_height)
-        height = max_height;
+// Visualization functions;
+function determineCanvas(){
+    // global variables
+    canvas_width = Math.round(window.innerWidth * 0.66) - margin.left - margin.right;
+    canvas_height = Math.min(
+        Math.round(window.innerHeight * 0.73) - margin.top - margin.bottom,
+        Math.round(canvas_width*0.75)
+    );
 }
 
 function reloadChart(){
     plotChart = d3.select('#chart')
         .append('svg')
         .attr('id', 'main_chart')
-        .attr('width', width + margin.left + margin.right)
-        .attr('height', height + margin.top + margin.bottom)
+        .attr('width', canvas_width + margin.left + margin.right)
+        .attr('height', canvas_height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 }
 
 function createLegend(){
-    var xLoc = width - 150;
+    var xLoc = canvas_width - 150;
     var final_ili_text;
-    if(forecast.season.year == 2016){
-        final_ili_text = "Latest issue of wILI(at "+Math.floor(sys_meta.y16.iliCoverage[1]/100)+"wk"+sys_meta.y16.iliCoverage[1]%100+")";
+    if(forecast.season.year == curr_season){
+        final_ili_text = "Latest issue of wILI(at "+
+            Math.floor(forecast.season.iliCoverage[1]/100)+"wk"
+            +forecast.season.iliCoverage[1]%100+")";
     }
     else{
         var y = parseInt(forecast.season.year)+1;
@@ -526,21 +569,21 @@ function visualizeData(lines){
                             .y1(function(d) {
                                     return yScale(d.upper); });
 
-    var season = parseInt(forecast.season.year);
+    var season = forecast.season.year;
     var end = weeksInYear(season) + 29;
 
     var xScale = d3.scale.linear()
                          .domain([30, end])
-                         .range([0, width]);
+                         .range([0, canvas_width]);
 
     var xScaleTime = d3.time.scale()
                              .domain([moment(season.toString() + "30", "YYYYWW"),
                                     moment((season + 1).toString() + "29", "YYYYWW")])
-                             .range([0, width]);
+                             .range([0, canvas_width]);
 
     var yScale = d3.scale.linear()
                          .domain([0, forecast.max_height[forecast.region]])
-                         .range([height, 0]);
+                         .range([canvas_height, 0]);
 
     var xAxisWeek = d3.svg.axis()
                         .scale(xScale)
@@ -562,22 +605,22 @@ function visualizeData(lines){
     plotChart.append('g')
              .attr('class', 'x-axis')
              .attr('fill',text_color)
-             .attr('transform', 'translate(0,' + height + ')')
+             .attr('transform', 'translate(0,' + canvas_height + ')')
              .call(xAxisWeek)
              .append("text")
                  .attr("class", "label")
-                 .attr("x", width)
+                 .attr("x", canvas_width)
                  .attr("y", -6)
                  .attr('fill',text_color)
                  .style("text-anchor", "end")
                  .text("Epi Week");
 
-    var axisShift = Math.round(height * 0.05);
-    var monthShift = Math.round(width * 0.04);
+    var axisShift = Math.round(canvas_height * 0.05);
+    var monthShift = Math.round(canvas_width * 0.04);
 
     plotChart.append('g')
              .attr('class', 'x-axis')
-             .attr('transform', 'translate(0,' + (height + axisShift) + ')')
+             .attr('transform', 'translate(0,' + (canvas_height + axisShift) + ')')
              .attr('fill',text_color)
              .call(xAxisMonth)
              .selectAll("text")
@@ -599,13 +642,13 @@ function visualizeData(lines){
                  .text("% Weighted ILI");
 
      var pastXValue = xScale(lines.forecast[0][0]);
-     var widthValue = width - Math.abs(pastXValue - width);
+     var widthValue = canvas_width - Math.abs(pastXValue - canvas_width);
 
      var pastRect = plotChart.append('g');
 
      pastRect.append("rect")
              .attr("width", widthValue)
-             .attr("height", height)
+             .attr("height", canvas_height)
              .attr("fill", "white")
              .attr("opacity", "0.1");
 
@@ -652,7 +695,7 @@ function visualizeData(lines){
     // baseline
     plotChart.append("svg:line")
              .attr("x1", 0)
-             .attr("x2", width)
+             .attr("x2", canvas_width)
              .attr("y1", yScale(forecast.baselines[forecast.region]))
              .attr("y2", yScale(forecast.baselines[forecast.region]))
              .style("stroke", "#eee")
@@ -774,21 +817,7 @@ function visualizeData(lines){
 
     var circleData = [];
     var temp;
-    //Hack to fix circle issue
-    /*
-    if (lines.currIli.length > 2){
-        for (i = 0; i < 2; i++){
-            temp = lines.currIli[i];
-            temp.push(actual_circle_color);
-            circleData.push(temp);
-        }
-    }
-    for (i = 0; i < lines.currIli.length; i++){
-        temp = lines.currIli[i];
-        temp.push(actual_circle_color);
-        circleData.push(temp);
-    }
-    */
+
     for (var i = 0; i < lines.forecast.length; i++){
         temp = lines.forecast[i];
         temp.push(predict_circle_color);
@@ -804,32 +833,7 @@ function visualizeData(lines){
              .attr("fill", function(d) { return d[2]; })
              .attr("r", 2.5);
 
-}
-
-// Read in meta data
-$(document).ready(function(){
-    Epidata.meta(function(a, b, data){
-        sys_meta.y16.iliCoverage[1] =
-            Math.min(data[0].fluview[0].latest_issue,sys_meta.y16.iliCoverage[1]);
-        data = data[0].delphi;
-        setCurrentSeason(data);
-        initialization();
-        //script_on_page();
-        reloadChart();
-        weekButtonControl();
-        loadData();
-    });
-});
-
-// Not sure what is this funcion --Lisheng
-function script_on_page(){
-    $(".dropdown-menu li a").click(function(){
-        $(this).parents(".dropdown").find('.btn').html($(this).text() + ' <span class="caret"></span>');
-        $(this).parents(".dropdown").find('.btn').val($(this).data('value'));
-    });
-
-    $('[data-toggle="tooltip"]').tooltip();
-}
+};
 
 d3.selection.prototype.first = function() {
     return d3.select(this[0][0]);
@@ -856,19 +860,19 @@ $.fn.showOption = function() {
 };
 
 $.fn.hideOption = function() {
-this.each(function() {
-    if( this.tagName == "OPTION" ) {
-        var opt = this;
-        if( $(this).parent().get(0).tagName == "SPAN" ) {
-            var span = $(this).parent().get(0);
-            $(span).hide();
-        } else {
-            $(opt).wrap("span").hide();
+    this.each(function() {
+        if( this.tagName == "OPTION" ) {
+            var opt = this;
+            if( $(this).parent().get(0).tagName == "SPAN" ) {
+                var span = $(this).parent().get(0);
+                $(span).hide();
+            } else {
+                $(opt).wrap("span").hide();
+            }
+            opt.disabled = true;
         }
-        opt.disabled = true;
-    }
-});
-return this;
+    });
+    return this;
 };
 
 function weekButtonControl(){

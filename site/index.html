@@ -257,7 +257,7 @@ $('#region_dropdown>li').on('click',function(event){
 
 
 $( window ).resize(function() {
-    determine_dim();
+    determineCanvas();
     $("#main_chart").remove();
     reloadChart();
     mapObj.colorMap();
