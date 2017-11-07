@@ -484,10 +484,13 @@ $(document.body).on('mouseleave','.state_dropdown_item',function(event){
 
 $( window ).resize(function() {
     determineCanvas();
-    $("#main_chart").remove();
-    reloadChart();
+    if (plotChart!=null){
+        $("#main_chart").remove();
+        reloadChart();
+        loadData();
+    }
+
     mapObj.colorMap();
-    loadData();
 });
 
 $(document).ready(function() {

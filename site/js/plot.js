@@ -1,5 +1,5 @@
 // global forecast instance contains all controlling parameters
-forecast = {
+var forecast = {
     // season object that contains season's meta info
     season:null,
     // contains the delphi system displayed
@@ -29,7 +29,7 @@ conf_area_color = "#FCFF9C";
 onset_color = "#FFA85C";
 
 // forecast system object
-sysObj = function(id,name,startWeek,endWeek,hasStateLevel,extraRegions){
+var sysObj = function(id,name,startWeek,endWeek,hasStateLevel,extraRegions){
     this.id = id;
     this.name = name;
     this.startWeek = startWeek;
@@ -39,9 +39,10 @@ sysObj = function(id,name,startWeek,endWeek,hasStateLevel,extraRegions){
 }
 
 // hard-coded current season (starting year)
-curr_season = 2017;
+var curr_season = 2017;
+var plotChart;
 // season meta information
-season_meta = new Map([
+var season_meta = new Map([
     [
       2014,
       {
