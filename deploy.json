@@ -34,7 +34,7 @@
     {
       "type": "copy",
       "src": "site/js/spin.min.js",
-      "dst": "/var/www/html/forecast/js/spin.min.js",
+      "dst": "/var/www/html/forecast/js/spin.js",
       "add-header-comment": true
     },
     {
