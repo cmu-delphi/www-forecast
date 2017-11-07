@@ -2,6 +2,7 @@
 <meta charset="utf-8">
 <head>
 <script src="https://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
+<script type="text/javascript" src="js/spin.min.js"></script>
 <script type="text/javascript" src="/epidata/lib/delphi_epidata.min.js"></script>
 <!-- Latest compiled and minified CSS -->
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
@@ -37,13 +38,13 @@ ga('send', 'pageview');
 <div class="row" id="display_body">
     <div class = "col-sm-3" id="control_col">
         <a href="http://delphi.midas.cs.cmu.edu/"><div id="banner"><img src="img/delphi_forecast.png"></div></a>
-        <div class = "dropdown_container dropdown" style = "display: inline-block:">
+        <div class = "dropdown_container dropdown " style = "display: inline-block:">
             <span class="dropdown_label">Geographic Scope</span>
-            <button class="btn btn-default dropdown-toggle" id="dropdown-btn" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+            <button class="btn btn-default dropdown-toggle custom-dropdown-btn" id="dropdown-btn" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                 National
                 <span class="caret"></span>
             </button>
-            <ul id="region_dropdown" class="dropdown-menu">
+            <ul id="region_dropdown" class="dropdown-menu custom-dropdown">
                 <li value="nat">National</li>
                 <li value="hhs1">Region 1 [CT, MA, ME, NH, RI, VT] </li>
                 <li value="hhs2">Region 2 [NJ, NY] </li>
@@ -57,31 +58,17 @@ ga('send', 'pageview');
                 <li value="hhs10">Region 10 [AK, ID, OR, WA]</li>
             </ul>
         </div>
+        <div class = "dropdown_container dropdown" id = "state_dropdown_container">
+            <span class = "dropdown_label">Specific state</span>
+            <button class="btn btn-default dropdown-toggle custom-dropdown-btn" style="width:100%" id="state-dropdown-btn" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true"></button>
+            <ui id = "state_dropdown" class="dropdown-menu custom-dropdown"></ui>
+        </div>
         <div class = "dropdown_container">
             <span class = "dropdown_label">Season to Forecast</span>
             <select id = "season_dropdown" class = "form-control" onchange="changeSeason(this.value)">
-                <option selected value="2016">2016-2017(Current)</option>
-                <option value="2015">2015-2016</option>
-                <option value="2014">2014-2015</option>
             </select>
         </div>
-        <div class = "dropdown_container">
-            <span class = "dropdown_label">Forecasting System</span>
-            <select id = "system_dropdown_2016" class = "form-control"  onchange="changeSystem(this.value)">
-                <option selected rel = "2016" value="st">Stat</option>
-                <option rel = "2016" value="ec">Epicast</option>
-            </select>
-            <select id = "system_dropdown_2015" class = "form-control" style="display:none;" onchange="changeSystem(this.value)">
-                <option selected rel = "2015" value="st">Stat</option>
-                <option rel = "2015" value="af">Archefilter</option>
-                <option rel = "2015" value="ec">Epicast</option>
-            </select>
-            <select id = "system_dropdown_2014" class = "form-control" style="display:none;" onchange="changeSystem(this.value)">
-                <option selected rel = "2014" value="eb">Empirical Bayes</option>
-                <option rel = "2014" value="ec">Epicast</option>
-                <option rel = "2014" value="sp">Spline</option>
-            </select>
-        </div>
+        <div class = "dropdown_container" id='system_dropdown_container'></div>
         <div class="checkbox">
             <label>
                 <input type="checkbox" checked onclick = "showConfidenceIntervals(this.checked)">
@@ -91,16 +78,16 @@ ga('send', 'pageview');
         <div id="map_container"></div>
     </div>
     <div id = "chart_container" class="col-sm-9">
-            <center>
-                <h2><div id = "chart_title"></h2>
-                <h3><div id = "chart_subtitle"></h3>
-                <div id = "chart"></div>
-                Use the left/right arrow keys to move the Prediction Week back/forward in time
-                <a href="#" data-toggle="tooltip" data-placement="top" title="The Prediction Week refers to the week at
-                which the forecast is being made.  For example, if the Prediction Week is set to 45, then only the %
-                weighted ILI values in weeks 44 and earlier of the given season, and all data from past seasons, are
-                used in order to create the forecast.">(?)</a>
-            </center>
+        <center>
+            <h2><div id = "chart_title"></h2>
+            <h3><div id = "chart_subtitle"></h3>
+            <div id = "chart"></div>
+            Use the left/right arrow keys to move the Prediction Week back/forward in time
+            <a href="#" data-toggle="tooltip" data-placement="top" title="The Prediction Week refers to the week at
+            which the forecast is being made.  For example, if the Prediction Week is set to 45, then only the %
+            weighted ILI values in weeks 44 and earlier of the given season, and all data from past seasons, are
+            used in order to create the forecast.">(?)</a>
+        </center>
     </div>
 </div>
 <footer>
@@ -109,19 +96,96 @@ ga('send', 'pageview');
 <script>
 // Create a map object based on usmap library
 var mapInfo = {
-    regionColors:['#5c7981', '#643c18', '#b2721a', '#dbd543', '#679a61', '#e28e45', '#508dac', '#a48f70', '#9dcbdb', '#d99b9c'],
-    regionStates: [
-      ['CT', 'MA', 'ME', 'NH', 'RI', 'VT', ],
-      ['NJ', 'NY', ],
-      ['DE', 'MD', 'PA', 'VA', 'WV', ],
-      ['AL', 'FL', 'GA', 'KY', 'MS', 'NC', 'SC', 'TN', ],
-      ['IL', 'IN', 'MI', 'MN', 'OH', 'WI', ],
-      ['AR', 'LA', 'TX', 'NM', 'OK', ],
-      ['IA', 'KS', 'MO', 'NE', ],
-      ['CO', 'MT', 'ND', 'SD', 'UT', 'WY', ],
-      ['AZ', 'CA', 'HI', 'NV', ],
-      ['AK', 'ID', 'OR', 'WA', ],
+    states: [
+        'CT', 'MA', 'ME', 'NH', 'RI', 'VT',
+        'NJ', 'NY', 'DE', 'MD', 'PA', 'VA',
+        'WV', 'AL', 'FL', 'GA', 'KY', 'MS',
+        'NC', 'SC', 'TN', 'IL', 'IN', 'MI',
+        'MN', 'OH', 'WI', 'AR', 'LA', 'TX',
+        'NM', 'OK', 'IA', 'KS', 'MO', 'NE',
+        'CO', 'MT', 'ND', 'SD', 'UT', 'WY',
+        'AZ', 'CA', 'HI', 'NV', 'AK', 'ID',
+        'OR', 'WA', 'DC',
     ],
+    stateNames: new Map([
+        ['AL','Alabama'],
+        ['AK','Alaska'],
+        ['AZ','Arizona'],
+        ['AR','Arkansas'],
+        ['CA','California'],
+        ['CO','Colorado'],
+        ['CT','Connecticut'],
+        ['DC','Washington, D.C.'],
+        ['DE','Delaware'],
+        ['FL','Florida'],
+        ['GA','Georgia'],
+        ['HI','Hawaii'],
+        ['ID','Idaho'],
+        ['IL','Illinois'],
+        ['IN','Indiana'],
+        ['IA','Iowa'],
+        ['KS','Kansas'],
+        ['KY','Kentucky'],
+        ['LA','Louisiana'],
+        ['ME','Maine'],
+        ['MD','Maryland'],
+        ['MA','Massachusetts'],
+        ['MI','Michigan'],
+        ['MN','Minnesota'],
+        ['MS','Mississippi'],
+        ['MO','Missouri'],
+        ['MT','Montana'],
+        ['NE','Nebraska'],
+        ['NV','Nevada'],
+        ['NH','New Hampshire'],
+        ['NJ','New Jersey'],
+        ['NM','New Mexico'],
+        ['NY','New York'],
+        ['NC','North Carolina'],
+        ['ND','North Dakota'],
+        ['OH','Ohio'],
+        ['OK','Oklahoma'],
+        ['OR','Oregon'],
+        ['PA','Pennsylvania'],
+        ['RI','Rhode Island'],
+        ['SC','South Carolina'],
+        ['SD','South Dakota'],
+        ['TN','Tennessee'],
+        ['TX','Texas'],
+        ['UT','Utah'],
+        ['VT','Vermont'],
+        ['VA','Virginia'],
+        ['WA','Washington'],
+        ['WV','West Virginia'],
+        ['WI','Wisconsin'],
+        ['WY','Wyoming'],
+    ]),
+    regions: [
+        'NAT','HHS1','HHS2','HHS3','HHS4','HHS5',
+        'HHS6','HHS7','HHS8','HHS9','HHS10',
+    ],
+    regionIds: new Map([
+        ['NAT',0],['HHS1',1],['HHS2',2],['HHS3',3],['HHS4',4],['HHS5',5],
+        ['HHS6',6],['HHS7',7],['HHS8',8],['HHS9',9],['HHS10',10],
+    ]),
+    regionColors: new Map([
+        ['HHS1','#5c7981'],['HHS2','#643c18'],['HHS3','#b2721a'],
+        ['HHS4','#dbd543'],['HHS5','#679a61'],['HHS6','#e28e45'],
+        ['HHS7','#508dac'],['HHS8','#a48f70'],['HHS9','#9dcbdb'],
+        ['HHS10','#d99b9c'],
+    ]),
+    regionStates: new Map([
+      ['HHS1',['CT', 'MA', 'ME', 'NH', 'RI', 'VT', ]],
+      ['HHS2',['NJ', 'NY', ]],
+      ['HHS3',['DE', 'MD', 'PA', 'VA', 'WV', ]],
+      ['HHS4',['AL', 'FL', 'GA', 'KY', 'MS', 'NC', 'SC', 'TN', ]],
+      ['HHS5',['IL', 'IN', 'MI', 'MN', 'OH', 'WI', ]],
+      ['HHS6',['AR', 'LA', 'TX', 'NM', 'OK', ]],
+      ['HHS7',['IA', 'KS', 'MO', 'NE', ]],
+      ['HHS8',['CO', 'MT', 'ND', 'SD', 'UT', 'WY', ]],
+      ['HHS9',['AZ', 'CA', 'HI', 'NV', ]],
+      ['HHS10',['AK', 'ID', 'OR', 'WA', ]],
+  ]),
 }
 
 
@@ -130,22 +194,27 @@ function mapObject(container, mapInfoClass){
     // Keep map same dimension as in Epicast
     this.height = this.width * 5 / 7;
     this.container_div = container;
-    $(this.container_div).append('<div id="map" style="width: '+this.width.toString()+'px; height: '+this.height.toString()+'px; margin-left: auto; margin-right: auto;">');
+    $(this.container_div).append(
+        '<div id="map" style="width: '+this.width.toString()+'px;'+
+        'height: '+this.height.toString()+'px;'+
+        'margin-left: auto; margin-right: auto;">'
+    );
     // Adjust the height of the map
     $(this.container_div).height(this.height*0.85);
 
     this.map_div = $("map");
-    this.colors = mapInfoClass.regionColors;
-    this.regions = mapInfoClass.regionStates;
 
     // Active region controls the style of map
-    this.activeRegion = 0;
+    this.activeRegion = 'NAT';
+    this.activeLocation = 'NAT';
 
     // Preset style: colored with opacity 0.5
     this.defaultStyle = {};
-    for(var i = 0; i < this.regions.length; i++) {
-        for(var j = 0; j < this.regions[i].length; j++) {
-            this.defaultStyle[this.regions[i][j]] = {fill: this.colors[i], opacity:0.5};
+    for(var i in mapInfo.regions) {
+        var r = mapInfo.regions[i];
+        var states = mapInfo.regionStates.get(r);
+        for(var j in states) {
+            this.defaultStyle[states[j]] = {fill: mapInfo.regionColors.get(r), opacity:0.5};
         }
     }
 
@@ -160,70 +229,70 @@ function mapObject(container, mapInfoClass){
         stateHoverStyles: {}
     };
 
-    this.regionToStates = function(rid){
-        return this.regions[rid];
+    this.regionIdToStates = function(rid){
+        var r = mapInfo.regions[rid];
+        return mapInfo.regionStates.get(r);
     };
 
-    this.stateToRegion = function(state){
-        for(var i = 0; i< this.regions.length;i++) {
-            if(this.regions[i].indexOf(state)!=-1)
+    this.stateToRegionId = function(state){
+        for(var i in mapInfo.regions){
+            var r = mapInfo.regions[i];
+            if (r=='NAT'){
+                continue;
+            }
+            var states = mapInfo.regionStates.get(r);
+            if(states.indexOf(state)!=-1)
                 return i;
         }
         return -1;
     };
 
+    this.paintLocation = function(location){
+        if (location==='NAT'){
+            for(var i in mapInfo.regions){
+                var r = mapInfo.regions[i];
+                var states = mapInfo.regionStates.get(r);
+                for(var j in states) {
+                    this.mapStyle.stateSpecificStyles[states[j]] = {
+                        fill: mapInfo.regionColors.get(r), opacity: 1.0, 'stroke-width': 1.5
+                    };
+                }
+            }
+        }
+        else if(mapInfo.states.indexOf(location)>=0){
+            this.mapStyle.stateSpecificStyles[location] = {
+                fill: '#F00', opacity: 1.0, 'stroke-width': 1.5
+            };
+        }
+        else if(mapInfo.regions.indexOf(location)>=0){
+            var states = mapInfo.regionStates.get(location);
+            for(var j in states) {
+                this.mapStyle.stateSpecificStyles[states[j]] = {
+                    fill: mapInfo.regionColors.get(location), opacity: 1.0, 'stroke-width': 1.5
+                };
+            }
+        }
+    }
+
     this.resetMap = function(){
         $(this.container_div).empty();
-        this.width = $("#control_col").width()*1.1;
+        this.width = $("#control_col").width()*1.05;
         // Keep map same dimension as in Epicast
         this.height = this.width * 5 / 7;
-        this.container_div = container;
-        $(this.container_div).append('<div id="map" style="width:'+this.width.toString()+'px; height: '+this.height.toString()+'px; margin-left: auto; margin-right:auto;">');
+        $(this.container_div).append(
+            '<div id="map" style="width:'+this.width.toString()+'px;'+
+            'height: '+this.height.toString()+'px; margin-left: auto; '+
+            'margin-right:auto;">'
+        );
     };
 
-    this.colorMap = function(region) {
+    this.colorMap = function(location) {
         this.resetMap();
         this.mapStyle.stateSpecificStyles = (JSON.parse(JSON.stringify(this.defaultStyle)));
-
-        if(region!=null)
-        {
-            if(region==0)
-            {
-                // Nation-wide
-                for(var i = 0; i< this.regions.length; i++)
-                {
-                    for(var j = 0; j < this.regions[i].length; j++) {
-                        this.mapStyle.stateSpecificStyles[this.regions[i][j]] = {fill: this.colors[i], opacity: 1.0};
-                    }
-                }
-            }
-            else
-            {
-                // Highlight current region
-                for(var j = 0; j < this.regions[region-1].length; j++) {
-                    this.mapStyle.stateSpecificStyles[this.regions[region-1][j]] = {fill: this.colors[region-1], opacity: 1.0};
-                }
-            }
+        if(location==null){
+            location = this.activeLocation;
         }
-
-
-        // Set style for current selection
-        if(this.activeRegion!=0)
-        {
-            for(var j = 0; j < this.regions[this.activeRegion-1].length; j++){
-                this.mapStyle.stateSpecificStyles[this.regions[this.activeRegion-1][j]] ={fill: this.colors[this.activeRegion-1], opacity: 1.0, 'stroke-width': 1.5};
-            }
-        }
-        else if(region==null)
-        {
-            // Nation-wide
-            for(var i = 0; i< this.regions.length; i++)
-            {
-                for(var j = 0; j < this.regions[i].length; j++) {
-                    this.mapStyle.stateSpecificStyles[this.regions[i][j]] = {fill: this.colors[i], opacity: 1.0};
-                }
-            }
-        }
+        this.paintLocation(location);
 
         $('#map').usmap(this.mapStyle);
     };
@@ -231,30 +300,187 @@ function mapObject(container, mapInfoClass){
     this.clearMap = function(){
         this.colorMap();
     };
+
+    this.colorMap();
+    setStateDropdown(this.activeRegion);
 }
+
+function setStateDropdown(region){
+    // Need access forecast syetem to check state level availability
+    if (region == null){
+        region = mapObj.activeRegion;
+    }
+    if (region==='NAT' || !forecast.sys.hasStateLevel){
+        $("#state_dropdown_container").hide();
+        return;
+    }
+    var states = mapInfo.regionStates.get(region);
+    var dropdown_obj = $("#state_dropdown");
+    dropdown_obj.empty();
+    dropdown_obj.append('<li class="state_dropdown_item" value="'+region.toLowerCase()+'">Region '+region+'</li>');
+    for (var i in states){
+        var s = states[i];
+        dropdown_obj.append('<li class="state_dropdown_item" value="'+s.toLowerCase()+'">'+s+'</li>');
+    }
+    $("#state-dropdown-btn").html('Region '+region+'<span class="caret"></span>');
+    $("#state_dropdown_container").show();
+}
+
+function setSeasonDropdown(){
+    var dropdown_obj = $("#season_dropdown");
+    dropdown_obj.empty();
+    var season_list = Array.from(season_meta);
+    for (var i in season_list){
+        var y = season_list[season_list.length-1-i][0];
+        var text = y.toString()+'-'+(y+1).toString();
+        var selected = ' ';
+        if(i==0){
+            text += '(current)';
+            selected = ' selected ';
+        }
+        dropdown_obj.append('<option'+selected+'value="'+y.toString()+'">'+text+'</option>');
+    }
+}
+
+function setSystemDropdown(){
+    var container_obj = $("#system_dropdown_container");
+    var systems = season_meta.get(forecast.season.year).sys;
+    var y = forecast.season.year;
+    container_obj.empty();
+    container_obj.append('<span class = "dropdown_label">Forecasting System</span>');
+    container_obj.append(
+        '<select id = "system_dropdown_'+y+'" class = "form-control"  onchange="changeSystem(this.value)"</select>'
+    );
+    var dropdown_id = 'system_dropdown_'+y;
+    var dropdown_obj = $('#'+dropdown_id);
+    for (var i in systems){
+        var sys = systems[i];
+        var selected = ' ';
+        if(sys.id == forecast.sys.id){
+            selected = ' selected ';
+        }
+        dropdown_obj.append(
+            '<option'+selected+'rel = "'+y.toString()+'" value="'+sys.id+'">'+sys.name+'</option>'
+        );
+    }
+}
+
+function setExtraRegionDropdown(){
+    // Set extra regions for special cases
+    var region_dropdown = $('#region_dropdown');
+    $('#region_dropdown>li').remove('.extra_region');
+    for (var i in forecast.sys.extraRegions){
+        var r = forecast.sys.extraRegions[i]
+        var rname;
+        if(mapInfo.states.indexOf(r)>=0){
+            rname = mapInfo.stateNames.get(r);
+        }
+        if(rname != null){
+            region_dropdown.append(
+                '<li value="'+r.toLowerCase()+'" class="extra_region">'+rname+'</li>'
+            );
+        }
+    }
+}
+
+function setRegionDropdownText(text){
+    if (text==null){
+        var li_objs = $('#region_dropdown>li');
+        for (var i in li_objs){
+            var obj = li_objs[i];
+            var rid = $(obj).attr('value');
+            if (rid==forecast.location){
+                text = $(obj).html();
+                break;
+            }
+        }
+    }
+    $("#dropdown-btn").html(text+'<span class="caret"></span>');
+}
+
+initialization();
+
 var mapObj = new mapObject($('#map_container'),mapInfo);
 
 // Listener
-$('#region_dropdown>li').on('mouseenter',function(event){
+$(document.body).on('mouseenter','#region_dropdown>li',function(event){
     event.preventDefault();
-    var i = $(this).index();
-    mapObj.colorMap(i);
+    var obj = $(this);
+    if(obj.hasClass('extra_region')){
+        var i = obj.index('.extra_region');
+        var loc = forecast.sys.extraRegions[i];
+    }
+    else{
+        var i = obj.index();
+        var loc = mapInfo.regions[i];
+    }
+    mapObj.colorMap(loc);
 });
 
-$('#region_dropdown>li').on('mouseleave',function(event){
+$(document.body).on('mouseleave','#region_dropdown>li',function(event){
     event.preventDefault();
     mapObj.colorMap();
 });
 
-$('#region_dropdown>li').on('click',function(event){
-    var i = $(this).index();
-    mapObj.activeRegion = i;
-    mapObj.colorMap();
-    // Change button text
-    $("#dropdown-btn").html($(this).html()+'<span class="caret"></span>');
-    changeRegion($(this).attr('value'));
+$(document.body).on('click','#region_dropdown>li',function(event){
+    var obj = $(this);
+    if(obj.hasClass('extra_region')){
+        var i = obj.index('.extra_region');
+        var loc = forecast.sys.extraRegions[i];
+    }
+    else{
+        var i = obj.index();
+        var loc = mapInfo.regions[i];
+    }
+    var text = obj.html();
+    Promise.all([changeLocation($(this).attr('value'))]).then(
+        function(){
+            mapObj.activeRegion = loc;
+            mapObj.activeLocation = loc;
+            mapObj.colorMap();
+            // Change button text
+            setRegionDropdownText(text);
+            // Set state dropdown
+            setStateDropdown();
+        }
+    )
 });
 
+$(document.body).on('mouseenter','.state_dropdown_item',function(event){
+    event.preventDefault();
+    var i = $(this).index();
+    var states = mapInfo.regionStates.get(mapObj.activeRegion);
+    var loc;
+    if(i==0){
+        loc = mapObj.activeRegion;
+    }
+    else{
+        loc = states[i-1];
+    }
+    mapObj.colorMap(loc);
+});
+
+$(document.body).on('mouseleave','.state_dropdown_item',function(event){
+    event.preventDefault();
+    mapObj.colorMap();
+});
+
+// $(document.body).on('click','.state_dropdown_item',function(event){
+//     var i = $(this).index();
+//     var loc = mapInfo.regions[i];
+//     var text = $(this).html();
+//     Promise.all([changeLocation($(this).attr('value'))]).then(
+//         function(){
+//             mapObj.activeRegion = loc;
+//             mapObj.activeLocation = loc;
+//             mapObj.colorMap();
+//             // Change button text
+//             $("#state-dropdown-btn").html(text+'<span class="caret"></span>');
+//             // Set state dropdown
+//             setStateDropdown(loc);
+//         }
+//     )
+// });
 
 $( window ).resize(function() {
     determineCanvas();
@@ -265,6 +491,41 @@ $( window ).resize(function() {
 });
 
 $(document).ready(function() {
-    mapObj.clearMap();
+    mapObj.colorMap();
 });
+
+// Loader gif
+var opts = {
+  lines: 13 // The number of lines to draw
+, length: 28 // The length of each line
+, width: 14 // The line thickness
+, radius: 42 // The radius of the inner circle
+, scale: 1 // Scales overall size of the spinner
+, corners: 1 // Corner roundness (0..1)
+, color: '#ccc' // #rgb or #rrggbb or array of colors
+, opacity: 0.5 // Opacity of the lines
+, rotate: 0 // The rotation offset
+, direction: 1 // 1: clockwise, -1: counterclockwise
+, speed: 1 // Rounds per second
+, trail: 60 // Afterglow percentage
+, fps: 20 // Frames per second when using setTimeout() as a fallback for CSS
+, zIndex: 2e9 // The z-index (defaults to 2000000000)
+, className: 'spinner' // The CSS class to assign to the spinner
+, top: '50%' // Top position relative to parent
+, left: '50%' // Left position relative to parent
+, shadow: false // Whether to render a shadow
+, hwaccel: false // Whether to use hardware acceleration
+, position: 'absolute' // Element positioning
+}
+
+var spinner = new Spinner(opts);
+function addLoaderAnim(){
+    var target = document.getElementById('chart_container');
+    spinner.spin(target);
+};
+
+function removeLoaderAnim(){
+    spinner.stop();
+}
+
 </script>

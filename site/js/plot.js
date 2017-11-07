@@ -29,21 +29,29 @@ conf_area_color = "#FCFF9C";
 onset_color = "#FFA85C";
 
 // forecast system object
-sysObj = function(id,startWeek,endWeek){
+sysObj = function(id,name,startWeek,endWeek,hasStateLevel,extraRegions){
     this.id = id;
+    this.name = name;
     this.startWeek = startWeek;
     this.endWeek = endWeek;
+    this.hasStateLevel = hasStateLevel;
+    this.extraRegions = extraRegions;
 }
 
 // hard-coded current season (starting year)
-curr_season = 2016;
+curr_season = 2017;
 // season meta information
 season_meta = new Map([
     [
       2014,
       {
         year:2014,
-        sys:[new sysObj('eb',201441,201519), new sysObj('ec',201441,201519), new sysObj('sp',201441,201519)],
+        sys:[
+            new sysObj('eb','Empirical Bayes',201441,201519,false,[]),
+            new sysObj('ec','Epicast',201441,201519,false,[]),
+            new sysObj('sp','Spline',201441,201519,false,[])
+        ],
+        // Need to change
         lastWeekInYear: 201453,
         iliCoverage:[201439,201521]
       }
@@ -52,7 +60,11 @@ season_meta = new Map([
       2015,
       {
         year:2015,
-        sys:[new sysObj('st',201542,201619), new sysObj('af',201541,201619), new sysObj('ec',201541,201619)],
+        sys:[
+            new sysObj('st','Stat',201542,201619,false,[]),
+            new sysObj('af','Archefilter',201541,201619,false,[]),
+            new sysObj('ec','Epicast',201541,201619,false,[])
+        ],
         lastWeekInYear: 201552,
         iliCoverage:[201539,201621]
 
@@ -62,22 +74,44 @@ season_meta = new Map([
       2016,
       {
         year:2016,
-        sys:[new sysObj('st',201643,201720), new sysObj('ec',201643,201720)],
+        sys:[
+            new sysObj('st','Stat',201643,201718,false,[]),
+            new sysObj('ec','Epicast',201643,201718,false,[])
+        ],
         lastWeekInYear: 201652,
         iliCoverage:[201641,201721]
       }
     ],
+    [
+      2017,
+      {
+        year:2017,
+        sys:[
+            new sysObj('ec','Epicast',201743,201820,false,['PA','DC','GA']),
+            //new sysObj('st','Stat',201743,201820,false,[])
+        ],
+        lastWeekInYear: 201752,
+        iliCoverage:[201741,201821]
+      }
+    ]
 ]);
 
 // Read in meta data and initialize the tool
 $(document).ready(function(){
+    $(':button').prop('disabled', true);
+    $('option').attr('disabled','disabled');
+    addLoaderAnim();
     Epidata.meta(function(a, b, data){
         setCurrentSeason(data);
+        // initialize for the second time to load current season info
         initialization();
         //script_on_page();
         reloadChart();
         weekButtonControl();
         loadData();
+        $(':button').prop('disabled', false);
+        $('option').removeAttr('disabled');
+        removeLoaderAnim();
     });
 });
 
@@ -112,9 +146,10 @@ function initialization(){
     forecast.season = season_meta.get(curr_season);
     forecast.sys = forecast.season.sys[0];
     forecast.epiweek = forecast.sys.endWeek;
-    forecast.region = 'nat';
+    forecast.location = 'nat';
     forecast.showConfidenceIntervals = true;
 
+    forecast.max_height_default = 10;
     forecast.max_height = {
         "nat" : 8,
         "hhs1" : 6,
@@ -128,6 +163,15 @@ function initialization(){
         "hhs9" : 10,
         "hhs10" : 10
     }
+
+    setSeasonDropdown();
+    setSystemDropdown();
+    setExtraRegionDropdown();
+}
+
+function isState(location){
+    var loc = location.toUpperCase();
+    return mapInfo.states.indexOf(loc)>=0;
 }
 
 // Callback functions for dropdowns
@@ -155,62 +199,73 @@ function showConfidenceIntervals(checked){
     loadData();
 }
 
-function changeSeason(season){
+function changeSeason(season,reload=true){
     season = parseInt(season);
     forecast.season = season_meta.get(season);
-    $("[id^=system_dropdown_]").each(function(index){
-        var ele_id = $(this).attr('id');
-        if(ele_id.search(season)!=-1) {
-            $(this).show();
-        }
-        else {
-            $(this).hide();
-        }
-    });
-
     // Set system
     forecast.epiweek = season*100+41;
     var curr_sys = forecast.sys.id;
-    changeSystem(curr_sys);
+    var curr_loc = forecast.location;
+    changeSystem(curr_sys,false);
+    if (
+        mapInfo.regions.indexOf(curr_loc.toUpperCase())==-1
+        && forecast.sys.extraRegions.indexOf(curr_loc.toUpperCase())==-1
+    ){
+        forecast.location = mapInfo.regions[0].toLowerCase();
+        mapObj.activeRegion = mapInfo.regions[0];
+        mapObj.activeLocation = mapInfo.regions[0];
+        mapObj.colorMap();
+        setRegionDropdownText();
+    }
     if(season == curr_season){
         forecast.epiweek = forecast.sys.endWeek;
     }
     // change the dropdown
-    var dropdown_id = '#system_dropdown_'+forecast.season.year.toString();
-    $(dropdown_id).val(forecast.sys.id).change();
-
-    loadData();
-
+    setSystemDropdown();
+    if (reload){
+        loadData();
+    }
 }
 
-function changeSystem(system){
+function changeSystem(system_id,reload=true){
     // Set to default first
-    forecast.sys = forecast.season.sys[0];
-
-    for(var i in forecast.season.sys){
-        if(forecast.season.sys[i].id==system)
-        {
-            forecast.sys = forecast.season.sys[i];
+    forecast.sys = null;
+    for (var i in forecast.season.sys){
+        var sys = forecast.season.sys[i];
+        if (sys.id==system_id){
+            forecast.sys = sys;
             break;
         }
+    }
+    if (forecast.sys == null){
+        forecast.sys = forecast.season.sys[0];
     }
     // Check whether epiweek is in range
     forecast.epiweek = Math.max(forecast.epiweek,forecast.sys.startWeek);
     forecast.epiweek = Math.min(forecast.epiweek,forecast.sys.endWeek);
 
-    loadData();
+    setStateDropdown();
+    setExtraRegionDropdown();
+    if (reload){
+        loadData();
+    }
 }
 
-function changeRegion(value){
-    forecast.region = value;
+function changeLocation(value){
+    forecast.location = value;
     loadData();
 }
 
 function getChartTitle(){
-    if (forecast.region == "nat")
+    if (forecast.location == "nat"){
         region = "National";
-    else
-        region = "Region " + forecast.region.replace("hhs", "");
+    }
+    else if(forecast.location.search("hhs")!=-1){
+        region = "Region " + forecast.location.replace("hhs", "");
+    }
+    else {
+        region = mapInfo.stateNames.get(forecast.location.toUpperCase());
+    }
     year = forecast.season.year.toString() + "-" + (forecast.season.year + 1).toString();
     return (region + " Influenza Forecast, " + year)
 }
@@ -229,54 +284,54 @@ function loadData(){
 
     // check whether stable wili is available
     if(forecast.season.year==curr_season){
-        y = forecast.season.year+1;
-        issue_time = Math.min(forecast.season.iliCoverage[1],y*100+30);
+        issue_time = null;
     }
     else{
         y = forecast.season.year+1;
         issue_time = y*100+30;
     }
 
-    // load data in parallel
-    Promise.all([
-        // load delphi forecasts
-        Epidata.delphi(
-            function(result, info, data) {
-                if (!result) {
-                    // If loading fails, `data` is a string with the reason
-                    alert('ForecastLoader says: ' + data)
-                }
-                else{
-                    forecast_data = data;
-                }
-            },
-            forecast.sys.id, forecast.epiweek
-        ),
-        // load latest ili/wili
-        Epidata.fluview(
-            function(result, info, latest_issue){
-                if (!result){
-                    alert('ForecastLoader says: ' + result);
-                }
-                else{
-                    latest_ili = latest_issue;
-                }
-            },
-            forecast.region, Epidata.range(start, end), issues = issue_time
-        ),
-        // load current issue of ili/wili
-        Epidata.fluview(function(result, info, curr_issue){
+    var load_forecast = Epidata.delphi(
+        function(result, info, data) {
+            if (!result) {
+                // If loading fails, `data` is a string with the reason
+                alert('ForecastLoader says: ' + data)
+            }
+            else{
+                forecast_data = data;
+            }
+        },
+        forecast.sys.id, forecast.epiweek
+    );
+
+    var load_latest, load_current;
+    load_latest = Epidata.fluview(
+        function(result, info, latest_issue){
+            if (!result){
+                alert('ForecastLoader says: ' + result);
+            }
+            else{
+                latest_ili = latest_issue;
+            }
+        },
+        forecast.location, Epidata.range(start, end), issues = issue_time
+    );
+
+    load_current = Epidata.fluview(
+        function(result, info, curr_issue){
             if (!result){
                 alert('ForecastLoader says: ' + result);
             }
             else{
                 curr_ili = curr_issue;
             }
-        }, forecast.region, Epidata.range(start, end),issues = forecast.epiweek)
-    ]).then(function(){
-        processData(forecast_data, curr_ili, latest_ili);}
+        },
+        forecast.location, Epidata.range(start, end),issues = forecast.epiweek
     );
-
+    // load data in parallel
+    Promise.all([load_forecast, load_latest, load_current]).then(function(){
+        processData(forecast_data, curr_ili, latest_ili);
+    });
 }
 
 // Data parsing functions
@@ -368,22 +423,26 @@ function getWeek(epiweek){
 }
 
 function processData(forecast_ili, curr_ili, latest_ili){
-    var data = forecast_ili[0].forecast.data[forecast.region];
+    var data = forecast_ili[0].forecast.data[forecast.location];
     var ili_bin_size = forecast_ili[0].forecast.ili_bin_size;
     var ili_bins = forecast_ili[0].forecast.ili_bins;
     var lines = {};
-    forecast.baselines = forecast_ili[0].forecast.baselines;
     forecast.num_weeks = forecast_ili[0].forecast.season.year_weeks;
+    // baselines for states will be null
+    forecast.baselines = forecast_ili[0].forecast.baselines;
+
     lines.currIli = [];
     for (var i = 0; i < curr_ili.length; i++){
-            var week = getWeek(curr_ili[i].epiweek);
-            lines.currIli.push([week, curr_ili[i].wili]);
+        var week = getWeek(curr_ili[i].epiweek);
+        lines.currIli.push([week, curr_ili[i].wili]);
     }
 
-    lines.latestIli = [];
-    for (var i = 0; i < latest_ili.length; i++){
+    if(latest_ili!=null){
+        lines.latestIli = [];
+        for (var i = 0; i < latest_ili.length; i++){
             var week = getWeek(latest_ili[i].epiweek);
             lines.latestIli.push([week, latest_ili[i].wili]);
+        }
     }
 
     lines.forecast = [];
@@ -419,11 +478,13 @@ function processData(forecast_ili, curr_ili, latest_ili){
     lines.peak_ili_interval = [[peakweekId+39, peak_ili_interval[0]], [peakweekId+39, peak_ili_interval[1]]];
 
     // Onset
-    var onsetWeek = data.onset.point;
-    var onsetWeekId = peakweekCast(onsetWeek, forecast.season.year);
-    lines.onset = [onsetWeekId+39];
-    var onsetweek_interval = determineInterval(data.onset.dist, 1, onsetWeekId);
-    lines.onsetweek_interval = [[onsetweek_interval[0]+39,data.onset.point], [onsetweek_interval[1]+39, data.onset.point]];
+    if (forecast.baselines != null){
+        var onsetWeek = data.onset.point;
+        var onsetWeekId = peakweekCast(onsetWeek, forecast.season.year);
+        lines.onset = [onsetWeekId+39];
+        var onsetweek_interval = determineInterval(data.onset.dist, 1, onsetWeekId);
+        lines.onsetweek_interval = [[onsetweek_interval[0]+39,data.onset.point], [onsetweek_interval[1]+39, data.onset.point]];
+    }
 
     visualizeData(lines);
 }
@@ -436,6 +497,8 @@ function determineCanvas(){
         Math.round(window.innerHeight * 0.73) - margin.top - margin.bottom,
         Math.round(canvas_width*0.75)
     );
+    $('#chart').height(canvas_height + margin.top + margin.bottom);
+    $('#chart').width(canvas_width + margin.left + margin.right);
 }
 
 function reloadChart(){
@@ -461,12 +524,12 @@ function createLegend(){
         final_ili_text = "Finalized wILI(at "+y+"wk30)"
     }
     plotChart.append("svg:line")
-                 .attr("x1", xLoc-20)
-                 .attr("x2", xLoc-10)
-                 .attr("y1", 30)
-                 .attr("y2", 30)
-                 .attr("stroke", actual_line_color)
-                 .attr("stroke-width", "1.5");
+        .attr("x1", xLoc-20)
+        .attr("x2", xLoc-10)
+        .attr("y1", 30)
+        .attr("y2", 30)
+        .attr("stroke", actual_line_color)
+        .attr("stroke-width", "1.5");
 
     plotChart.append("text")
         .attr("x", xLoc)
@@ -478,12 +541,12 @@ function createLegend(){
         .attr("class", "perm");
 
     plotChart.append("svg:line")
-                 .attr("x1", xLoc-20)
-                 .attr("x2", xLoc-10)
-                 .attr("y1", 50)
-                 .attr("y2", 50)
-                 .attr("stroke", latest_ili_color)
-                 .attr("stroke-width", "1.5");
+        .attr("x1", xLoc-20)
+        .attr("x2", xLoc-10)
+        .attr("y1", 50)
+        .attr("y2", 50)
+        .attr("stroke", latest_ili_color)
+        .attr("stroke-width", "1.5");
 
     plotChart.append("text")
         .attr("x", xLoc)
@@ -529,24 +592,26 @@ function createLegend(){
         .attr("text-anchor", "start")
         .attr("class", "perm");
 
-    plotChart.append("text")
-        .attr("x", xLoc - 15)
-        .attr("y", 114.5)
-        .text("o")
-        .attr("fill", onset_color)
-        .attr("font-size", "14px")
-        .attr("text-anchor", "middle")
-        .attr("font-weight", "bold")
-        .attr("class", "perm");
+    if(forecast.baselines!=null){
+        plotChart.append("text")
+            .attr("x", xLoc - 15)
+            .attr("y", 114.5)
+            .text("o")
+            .attr("fill", onset_color)
+            .attr("font-size", "14px")
+            .attr("text-anchor", "middle")
+            .attr("font-weight", "bold")
+            .attr("class", "perm");
 
-    plotChart.append("text")
-        .attr("x", xLoc)
-        .attr("y", 112.5)
-        .text("Predicted onset")
-        .attr("fill", text_color)
-        .attr("font-size", "10px")
-        .attr("text-anchor", "start")
-        .attr("class", "perm");
+        plotChart.append("text")
+            .attr("x", xLoc)
+            .attr("y", 112.5)
+            .text("Predicted onset")
+            .attr("fill", text_color)
+            .attr("font-size", "10px")
+            .attr("text-anchor", "start")
+            .attr("class", "perm");
+    }
 }
 
 function visualizeData(lines){
@@ -561,233 +626,243 @@ function visualizeData(lines){
 
     createLegend();
 
-    var confidenceArea = d3.svg.area()
-                            .interpolate("linear")
-                            .x(function(d) { return xScale(d.x); })
-                            .y0(function(d) {
-                                    return yScale(d.lower); })
-                            .y1(function(d) {
-                                    return yScale(d.upper); });
-
     var season = forecast.season.year;
     var end = weeksInYear(season) + 29;
 
     var xScale = d3.scale.linear()
-                         .domain([30, end])
-                         .range([0, canvas_width]);
+        .domain([30, end])
+        .range([0, canvas_width]);
 
     var xScaleTime = d3.time.scale()
-                             .domain([moment(season.toString() + "30", "YYYYWW"),
-                                    moment((season + 1).toString() + "29", "YYYYWW")])
-                             .range([0, canvas_width]);
+        .domain([
+            moment(season.toString() + "30", "YYYYWW"),
+            moment((season + 1).toString() + "29", "YYYYWW")
+        ])
+        .range([0, canvas_width]);
 
+    var max_height;
+    if (forecast.max_height[forecast.location]!=null){
+        max_height = forecast.max_height[forecast.location];
+    }
+    else {
+        max_height = lines.peak_ili_interval[1][1]*1.1;
+    }
     var yScale = d3.scale.linear()
-                         .domain([0, forecast.max_height[forecast.region]])
-                         .range([canvas_height, 0]);
+        .domain([0, max_height])
+        .range([canvas_height, 0]);
 
     var xAxisWeek = d3.svg.axis()
-                        .scale(xScale)
-                        .ticks((end - 30) / 2)
-                        .tickFormat(function(x){return ((x - 1) % (weeksInYear(season))) + 1})
-                        .orient('bottom')
+        .scale(xScale)
+        .ticks((end - 30) / 2)
+        .tickFormat(function(x){return ((x - 1) % (weeksInYear(season))) + 1})
+        .orient('bottom');
 
     var xAxisMonth = d3.svg.axis()
-                        .scale(xScaleTime)
-                        .tickSize(5, 0)
-                        .ticks(d3.time.months)
-                        .tickFormat(d3.time.format("%b"))
-                        .orient('bottom')
+        .scale(xScaleTime)
+        .tickSize(5, 0)
+        .ticks(d3.time.months)
+        .tickFormat(d3.time.format("%b"))
+        .orient('bottom');
 
     var yAxis = d3.svg.axis()
-                    .scale(yScale)
-                    .orient('left');
+        .scale(yScale)
+        .orient('left');
 
+    var confidenceArea = d3.svg.area()
+        .interpolate("linear")
+        .x(function(d) { return xScale(d.x); })
+        .y0(function(d) {
+                return yScale(d.lower); })
+        .y1(function(d) {
+                return yScale(d.upper); });
     plotChart.append('g')
-             .attr('class', 'x-axis')
-             .attr('fill',text_color)
-             .attr('transform', 'translate(0,' + canvas_height + ')')
-             .call(xAxisWeek)
-             .append("text")
-                 .attr("class", "label")
-                 .attr("x", canvas_width)
-                 .attr("y", -6)
-                 .attr('fill',text_color)
-                 .style("text-anchor", "end")
-                 .text("Epi Week");
+        .attr('class', 'x-axis')
+        .attr('fill',text_color)
+        .attr('transform', 'translate(0,' + canvas_height + ')')
+        .call(xAxisWeek)
+        .append("text")
+            .attr("class", "label")
+            .attr("x", canvas_width)
+            .attr("y", -6)
+            .attr('fill',text_color)
+            .style("text-anchor", "end")
+            .text("Epi Week");
 
     var axisShift = Math.round(canvas_height * 0.05);
     var monthShift = Math.round(canvas_width * 0.04);
 
     plotChart.append('g')
-             .attr('class', 'x-axis')
-             .attr('transform', 'translate(0,' + (canvas_height + axisShift) + ')')
-             .attr('fill',text_color)
-             .call(xAxisMonth)
-             .selectAll("text")
-                    .attr("transform", "translate(" + monthShift + ", 0)" )
-                    .last().remove();
+        .attr('class', 'x-axis')
+        .attr('transform', 'translate(0,' + (canvas_height + axisShift) + ')')
+        .attr('fill',text_color)
+        .call(xAxisMonth)
+            .selectAll("text")
+            .attr("transform", "translate(" + monthShift + ", 0)" )
+            .last().remove();
 
     plotChart.append('g')
-             .attr('class', 'y-axis')
-             .attr('fill',text_color)
-             .call(yAxis)
-             .append("text")
-                 .attr("class", "label")
-                 .attr("transform", "rotate(-90)")
-                 .attr("y", 7)
-                 .attr("x", -3)
-                 .attr("dy", ".72em")
-                 .style("text-anchor", "end")
-                 .attr('fill',text_color)
-                 .text("% Weighted ILI");
+        .attr('class', 'y-axis')
+        .attr('fill',text_color)
+        .call(yAxis)
+        .append("text")
+            .attr("class", "label")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 7)
+            .attr("x", -3)
+            .attr("dy", ".72em")
+            .style("text-anchor", "end")
+            .attr('fill',text_color)
+            .text("% Weighted ILI");
 
-     var pastXValue = xScale(lines.forecast[0][0]);
-     var widthValue = canvas_width - Math.abs(pastXValue - canvas_width);
+    var pastXValue = xScale(lines.forecast[0][0]);
+    var widthValue = canvas_width - Math.abs(pastXValue - canvas_width);
 
-     var pastRect = plotChart.append('g');
+    var pastRect = plotChart.append('g');
 
-     pastRect.append("rect")
-             .attr("width", widthValue)
-             .attr("height", canvas_height)
-             .attr("fill", "white")
-             .attr("opacity", "0.1");
+    pastRect.append("rect")
+        .attr("width", widthValue)
+        .attr("height", canvas_height)
+        .attr("fill", "white")
+        .attr("opacity", "0.1");
 
-        pastRect.append("text")
-                .attr("class", "label")
-                .attr("y", 5)
-                .attr("x", widthValue - 5)
-                .attr("dy", ".72em")
-                .style("text-anchor", "end")
-                .text("< Past")
-                .attr("fill", "white");
+    pastRect.append("text")
+        .attr("class", "label")
+        .attr("y", 5)
+        .attr("x", widthValue - 5)
+        .attr("dy", ".72em")
+        .style("text-anchor", "end")
+        .text("< Past")
+        .attr("fill", "white");
 
-        pastRect.append("text")
-                .attr("class", "label")
-                .attr("y", 5)
-                .attr("x", widthValue + 5)
-                .attr("dy", ".72em")
-                .style("text-anchor", "start")
-                .text("Future >")
-                .attr("fill", "white");
+    pastRect.append("text")
+        .attr("class", "label")
+        .attr("y", 5)
+        .attr("x", widthValue + 5)
+        .attr("dy", ".72em")
+        .style("text-anchor", "start")
+        .text("Future >")
+        .attr("fill", "white");
 
     var line = d3.svg.line()
-                 .x(function(d) {
-                     return xScale(d[0]);
-                    })
-                 .y(function(d) {
-                     return yScale(d[1]);
-                    })
-                 .interpolate("linear");
+        .x(function(d) {return xScale(d[0]);})
+        .y(function(d) {return yScale(d[1]);})
+        .interpolate("linear");
 
+    // latest ili
+    if(lines.latestIli != null){
+        plotChart.append("path")
+            .datum(lines.latestIli)
+            .attr("class", "line")
+            .attr("d", line)
+            .attr("stroke", latest_ili_color);
+    }
+
+    // current ili
     plotChart.append("path")
-             .datum(lines.latestIli)
-             .attr("class", "line")
-             .attr("d", line)
-             .attr("stroke", latest_ili_color);
-
-    plotChart.append("path")
-             .datum(lines.currIli)
-             .attr("class", "line")
-             .attr("d", line)
-             .attr("stroke", actual_line_color);
-
+        .datum(lines.currIli)
+        .attr("class", "line")
+        .attr("d", line)
+        .attr("stroke", actual_line_color);
 
     // baseline
-    plotChart.append("svg:line")
-             .attr("x1", 0)
-             .attr("x2", canvas_width)
-             .attr("y1", yScale(forecast.baselines[forecast.region]))
-             .attr("y2", yScale(forecast.baselines[forecast.region]))
-             .style("stroke", "#eee")
-             .style("stroke-opacity", 0.9)
-             .style("stroke-dasharray", ("3, 3"));
+    if (forecast.baselines != null){
+        plotChart.append("svg:line")
+            .attr("x1", 0)
+            .attr("x2", canvas_width)
+            .attr("y1", yScale(forecast.baselines[forecast.location]))
+            .attr("y2", yScale(forecast.baselines[forecast.location]))
+            .style("stroke", "#eee")
+            .style("stroke-opacity", 0.9)
+            .style("stroke-dasharray", ("3, 3"));
+    }
 
     if (forecast.showConfidenceIntervals){
         // Prediction interval
         plotChart.append("path")
-                 .datum(lines.confidenceInterval)
-                 .attr("class", "confidence")
-                 .attr("d", confidenceArea)
-                 .attr("stroke", "")
-                 .attr("fill", conf_area_color)
-                 .attr("opacity", "0.1");
+             .datum(lines.confidenceInterval)
+             .attr("class", "confidence")
+             .attr("d", confidenceArea)
+             .attr("stroke", "")
+             .attr("fill", conf_area_color)
+             .attr("opacity", "0.1");
 
         // Peak interval
         plotChart.append("svg:line")
-                 .attr("x1", xScale(lines.peak_ili_interval[0][0]))
-                 .attr("x2", xScale(lines.peak_ili_interval[1][0]))
-                 .attr("y1", yScale(lines.peak_ili_interval[0][1]))
-                 .attr("y2", yScale(lines.peak_ili_interval[1][1]))
-                 .attr("stroke", predict_line_color)
-                 .attr("stroke-width", "1.5")
-                 .style("stroke-dasharray", ("3, 3"));
+             .attr("x1", xScale(lines.peak_ili_interval[0][0]))
+             .attr("x2", xScale(lines.peak_ili_interval[1][0]))
+             .attr("y1", yScale(lines.peak_ili_interval[0][1]))
+             .attr("y2", yScale(lines.peak_ili_interval[1][1]))
+             .attr("stroke", predict_line_color)
+             .attr("stroke-width", "1.5")
+             .style("stroke-dasharray", ("3, 3"));
 
         plotChart.append("svg:line")
-                 .attr("x1", xScale(lines.peak_time_interval[0][0]))
-                 .attr("x2", xScale(lines.peak_time_interval[1][0]))
-                 .attr("y1", yScale(lines.peak_time_interval[0][1]))
-                 .attr("y2", yScale(lines.peak_time_interval[1][1]))
-                 .attr("stroke", predict_line_color)
-                 .attr("stroke-width", "1.5")
-                 .style("stroke-dasharray", ("3, 3"));
+             .attr("x1", xScale(lines.peak_time_interval[0][0]))
+             .attr("x2", xScale(lines.peak_time_interval[1][0]))
+             .attr("y1", yScale(lines.peak_time_interval[0][1]))
+             .attr("y2", yScale(lines.peak_time_interval[1][1]))
+             .attr("stroke", predict_line_color)
+             .attr("stroke-width", "1.5")
+             .style("stroke-dasharray", ("3, 3"));
 
         plotChart.append("svg:line")
-                 .attr("x1", xScale(lines.peak_ili_interval[0][0]) - 5)
-                 .attr("x2", xScale(lines.peak_ili_interval[1][0]) + 5)
-                 .attr("y1", yScale(lines.peak_ili_interval[0][1]))
-                 .attr("y2", yScale(lines.peak_ili_interval[0][1]))
-                 .attr("stroke", predict_line_color)
-                 .attr("stroke-width", "1.5");
+             .attr("x1", xScale(lines.peak_ili_interval[0][0]) - 5)
+             .attr("x2", xScale(lines.peak_ili_interval[1][0]) + 5)
+             .attr("y1", yScale(lines.peak_ili_interval[0][1]))
+             .attr("y2", yScale(lines.peak_ili_interval[0][1]))
+             .attr("stroke", predict_line_color)
+             .attr("stroke-width", "1.5");
 
         plotChart.append("svg:line")
-                 .attr("x1", xScale(lines.peak_ili_interval[0][0]) - 5)
-                 .attr("x2", xScale(lines.peak_ili_interval[1][0]) + 5)
-                 .attr("y1", yScale(lines.peak_ili_interval[1][1]))
-                 .attr("y2", yScale(lines.peak_ili_interval[1][1]))
-                 .attr("stroke", predict_line_color)
-                 .attr("stroke-width", "1.5");
+             .attr("x1", xScale(lines.peak_ili_interval[0][0]) - 5)
+             .attr("x2", xScale(lines.peak_ili_interval[1][0]) + 5)
+             .attr("y1", yScale(lines.peak_ili_interval[1][1]))
+             .attr("y2", yScale(lines.peak_ili_interval[1][1]))
+             .attr("stroke", predict_line_color)
+             .attr("stroke-width", "1.5");
 
         plotChart.append("svg:line")
-                 .attr("x1", xScale(lines.peak_time_interval[0][0]))
-                 .attr("x2", xScale(lines.peak_time_interval[0][0]))
-                 .attr("y1", yScale(lines.peak_time_interval[0][1]) - 5)
-                 .attr("y2", yScale(lines.peak_time_interval[1][1]) + 5)
-                 .attr("stroke", predict_line_color)
-                 .attr("stroke-width", "1.5");
+             .attr("x1", xScale(lines.peak_time_interval[0][0]))
+             .attr("x2", xScale(lines.peak_time_interval[0][0]))
+             .attr("y1", yScale(lines.peak_time_interval[0][1]) - 5)
+             .attr("y2", yScale(lines.peak_time_interval[1][1]) + 5)
+             .attr("stroke", predict_line_color)
+             .attr("stroke-width", "1.5");
 
         plotChart.append("svg:line")
-                 .attr("x1", xScale(lines.peak_time_interval[1][0]))
-                 .attr("x2", xScale(lines.peak_time_interval[1][0]))
-                 .attr("y1", yScale(lines.peak_time_interval[0][1]) - 5)
-                 .attr("y2", yScale(lines.peak_time_interval[1][1]) + 5)
-                 .attr("stroke", predict_line_color)
-                 .attr("stroke-width", "1.5");
+             .attr("x1", xScale(lines.peak_time_interval[1][0]))
+             .attr("x2", xScale(lines.peak_time_interval[1][0]))
+             .attr("y1", yScale(lines.peak_time_interval[0][1]) - 5)
+             .attr("y2", yScale(lines.peak_time_interval[1][1]) + 5)
+             .attr("stroke", predict_line_color)
+             .attr("stroke-width", "1.5");
 
         // onset interval
-        plotChart.append("svg:line")
+        if (forecast.baselines != null){
+            plotChart.append("svg:line")
                  .attr("x1", xScale(lines.onsetweek_interval[0][0]))
                  .attr("x2", xScale(lines.onsetweek_interval[1][0]))
-                 .attr("y1", yScale(forecast.baselines[forecast.region]))
-                 .attr("y2", yScale(forecast.baselines[forecast.region]))
+                 .attr("y1", yScale(forecast.baselines[forecast.location]))
+                 .attr("y2", yScale(forecast.baselines[forecast.location]))
                  .attr("stroke", onset_color)
                  .attr("stroke-width", "1.5");
 
-        plotChart.append("svg:line")
+            plotChart.append("svg:line")
                  .attr("x1", xScale(lines.onsetweek_interval[0][0]))
                  .attr("x2", xScale(lines.onsetweek_interval[0][0]))
-                 .attr("y1", yScale(forecast.baselines[forecast.region]) - 5)
-                 .attr("y2", yScale(forecast.baselines[forecast.region]) + 5)
+                 .attr("y1", yScale(forecast.baselines[forecast.location]) - 5)
+                 .attr("y2", yScale(forecast.baselines[forecast.location]) + 5)
                  .attr("stroke", onset_color)
                  .attr("stroke-width", "1.5");
 
-        plotChart.append("svg:line")
+            plotChart.append("svg:line")
                  .attr("x1", xScale(lines.onsetweek_interval[1][0]))
                  .attr("x2", xScale(lines.onsetweek_interval[1][0]))
-                 .attr("y1", yScale(forecast.baselines[forecast.region]) - 5)
-                 .attr("y2", yScale(forecast.baselines[forecast.region]) + 5)
+                 .attr("y1", yScale(forecast.baselines[forecast.location]) - 5)
+                 .attr("y2", yScale(forecast.baselines[forecast.location]) + 5)
                  .attr("stroke", onset_color)
                  .attr("stroke-width", "1.5");
-
+        }
     }
 
     plotChart.append("path")
@@ -806,14 +881,16 @@ function visualizeData(lines){
              .attr("font-weight", "bold")
 
     // onset
-    plotChart.append("text")
-             .attr("x", xScale(lines.onset[0]))
-             .attr("y", yScale(forecast.baselines[forecast.region])+4.5)
-             .text("o")
-             .attr("fill", onset_color)
-             .attr("font-size", "18px")
-             .attr("text-anchor", "middle")
-             .attr("font-weight", "bold");
+    if (forecast.baselines != null){
+        plotChart.append("text")
+            .attr("x", xScale(lines.onset[0]))
+            .attr("y", yScale(forecast.baselines[forecast.location])+4.5)
+            .text("o")
+            .attr("fill", onset_color)
+            .attr("font-size", "18px")
+            .attr("text-anchor", "middle")
+            .attr("font-weight", "bold");
+    }
 
     var circleData = [];
     var temp;
@@ -825,14 +902,13 @@ function visualizeData(lines){
     }
 
     plotChart.selectAll("circle")
-             .data(circleData)
-             .enter()
-             .append("circle")
-             .attr("cx", function(d) { return xScale(d[0]); })
-             .attr("cy", function(d) { return yScale(d[1]); })
-             .attr("fill", function(d) { return d[2]; })
-             .attr("r", 2.5);
-
+        .data(circleData)
+        .enter()
+        .append("circle")
+        .attr("cx", function(d) { return xScale(d[0]); })
+        .attr("cy", function(d) { return yScale(d[1]); })
+        .attr("fill", function(d) { return d[2]; })
+        .attr("r", 2.5);
 };
 
 d3.selection.prototype.first = function() {
