@@ -21,13 +21,8 @@
       "add-header-comment": true
     },
     {
-      "type": "minimize-js",
-      "src": "site/js/plot.js",
-      "dst": "site/js/plot.js_min"
-    },
-    {
       "type": "copy",
-      "src": "site/js/plot.js_min",
+      "src": "site/js/plot.js",
       "dst": "/var/www/html/forecast/js/plot.js",
       "add-header-comment": true
     },
