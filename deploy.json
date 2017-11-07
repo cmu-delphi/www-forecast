@@ -33,6 +33,12 @@
     },
     {
       "type": "copy",
+      "src": "site/js/spin.min.js",
+      "dst": "/var/www/html/forecast/js/spin.min.js",
+      "add-header-comment": false
+    },
+    {
+      "type": "copy",
       "src": "site/img/delphi_forecast.png",
       "dst": "/var/www/html/forecast/img/delphi_forecast.png",
       "add-header-comment": false
