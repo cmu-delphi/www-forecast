@@ -465,22 +465,28 @@ $(document.body).on('mouseleave','.state_dropdown_item',function(event){
     mapObj.colorMap();
 });
 
-// $(document.body).on('click','.state_dropdown_item',function(event){
-//     var i = $(this).index();
-//     var loc = mapInfo.regions[i];
-//     var text = $(this).html();
-//     Promise.all([changeLocation($(this).attr('value'))]).then(
-//         function(){
-//             mapObj.activeRegion = loc;
-//             mapObj.activeLocation = loc;
-//             mapObj.colorMap();
-//             // Change button text
-//             $("#state-dropdown-btn").html(text+'<span class="caret"></span>');
-//             // Set state dropdown
-//             setStateDropdown(loc);
-//         }
-//     )
-// });
+$(document.body).on('click','.state_dropdown_item',function(event){
+    event.preventDefault();
+    var i = $(this).index();
+    var states = mapInfo.regionStates.get(mapObj.activeRegion);
+    var loc;
+    if(i==0){
+        loc = mapObj.activeRegion;
+    }
+    else{
+        loc = states[i-1];
+    }
+    var text = $(this).html();
+    forecast.location = loc.toLowerCase();
+    Promise.all([changeLocation($(this).attr('value'))]).then(
+        function(){
+            mapObj.activeLocation = loc;
+            mapObj.colorMap();
+            // Change button text
+            $("#state-dropdown-btn").html(text+'<span class="caret"></span>');
+        }
+    )
+});
 
 $( window ).resize(function() {
     determineCanvas();

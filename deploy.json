@@ -20,6 +20,11 @@
       "dst": "/var/www/html/forecast/style/plot.css",
       "add-header-comment": true
     },
+    "// minimization",
+    {
+      "type": "minimize-js",
+      "src": "site/js/plot.js"
+    },
     {
       "type": "copy",
       "src": "site/js/plot.js",

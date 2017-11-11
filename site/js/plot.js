@@ -88,8 +88,8 @@ var season_meta = new Map([
       {
         year:2017,
         sys:[
-            new sysObj('ec','Epicast',201743,201820,false,['PA','DC','GA']),
-            //new sysObj('st','Stat',201743,201820,false,[])
+            new sysObj('st','Stat',201743,201820,false,[]),
+            new sysObj('ec','Epicast',201743,201820,false,['PA','DC','GA'])
         ],
         lastWeekInYear: 201752,
         iliCoverage:[201741,201821]
@@ -258,17 +258,20 @@ function changeLocation(value){
 }
 
 function getChartTitle(){
+    var region_str;
     if (forecast.location == "nat"){
-        region = "National";
+        region_str = "National";
     }
     else if(forecast.location.search("hhs")!=-1){
-        region = "Region " + forecast.location.replace("hhs", "");
+        region_str = "Region " + forecast.location.replace("hhs", "");
     }
     else {
-        region = mapInfo.stateNames.get(forecast.location.toUpperCase());
+        region_str = mapInfo.stateNames.get(forecast.location.toUpperCase());
     }
-    year = forecast.season.year.toString() + "-" + (forecast.season.year + 1).toString();
-    return (region + " Influenza Forecast, " + year)
+    var year_str = forecast.season.year.toString() + "-" + (forecast.season.year + 1).toString();
+    var system_str = forecast.sys.name;
+
+    return (region_str + " Influenza Forecast, " + year_str+ " ("+system_str+")");
 }
 
 function getSubChartTitle(){
