@@ -107,6 +107,7 @@ var mapInfo = {
         'AZ', 'CA', 'HI', 'NV', 'AK', 'ID',
         'OR', 'WA', 'DC',
     ],
+    statesExcluded: ['LA','FL','MI'],
     stateNames: new Map([
         ['AL','Alabama'],
         ['AK','Alaska'],
@@ -320,7 +321,11 @@ function setStateDropdown(region){
     dropdown_obj.append('<li class="state_dropdown_item" value="'+region.toLowerCase()+'">Region '+region+'</li>');
     for (var i in states){
         var s = states[i];
-        dropdown_obj.append('<li class="state_dropdown_item" value="'+s.toLowerCase()+'">'+s+'</li>');
+        if (mapInfo.statesExcluded.indexOf(s)>=0){
+            continue;
+        }
+        var sname = mapInfo.stateNames.get(s);
+        dropdown_obj.append('<li class="state_dropdown_item" value="'+s.toLowerCase()+'">'+sname+'</li>');
     }
     $("#state-dropdown-btn").html('Region '+region+'<span class="caret"></span>');
     $("#state_dropdown_container").show();

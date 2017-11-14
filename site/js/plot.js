@@ -88,7 +88,7 @@ var season_meta = new Map([
       {
         year:2017,
         sys:[
-            new sysObj('st','Stat',201743,201820,false,[]),
+            new sysObj('st','Stat',201743,201820,true,[]),
             new sysObj('ec','Epicast',201743,201820,false,['PA','DC','GA'])
         ],
         lastWeekInYear: 201752,
@@ -208,16 +208,6 @@ function changeSeason(season,reload=true){
     var curr_sys = forecast.sys.id;
     var curr_loc = forecast.location;
     changeSystem(curr_sys,false);
-    if (
-        mapInfo.regions.indexOf(curr_loc.toUpperCase())==-1
-        && forecast.sys.extraRegions.indexOf(curr_loc.toUpperCase())==-1
-    ){
-        forecast.location = mapInfo.regions[0].toLowerCase();
-        mapObj.activeRegion = mapInfo.regions[0];
-        mapObj.activeLocation = mapInfo.regions[0];
-        mapObj.colorMap();
-        setRegionDropdownText();
-    }
     if(season == curr_season){
         forecast.epiweek = forecast.sys.endWeek;
     }
@@ -245,6 +235,17 @@ function changeSystem(system_id,reload=true){
     forecast.epiweek = Math.max(forecast.epiweek,forecast.sys.startWeek);
     forecast.epiweek = Math.min(forecast.epiweek,forecast.sys.endWeek);
 
+    // Check whether region is included
+    if (mapInfo.regions.indexOf(forecast.location.toUpperCase())==-1){
+        if (mapInfo.regions.indexOf(mapObj.activeRegion)==-1){
+            mapObj.activeRegion = mapInfo.regions[0];
+        }
+        mapObj.activeLocation = mapObj.activeRegion;
+        forecast.location = mapObj.activeRegion.toLowerCase();
+        mapObj.colorMap();
+        setRegionDropdownText();
+    }
+    
     setStateDropdown();
     setExtraRegionDropdown();
     if (reload){
