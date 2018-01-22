@@ -451,6 +451,22 @@ $(document.body).on('click','#region_dropdown>li',function(event){
     )
 });
 
+function getStateByDropdownId(index, states){
+    var counter = 0;
+    var curr;
+    for (var i in states){
+        curr = states[i];
+        if (mapInfo.statesExcluded.indexOf(curr)!=-1){
+            continue;
+        }
+        if (counter == index){
+            break;
+        }
+        counter ++;
+    }
+    return curr;
+}
+
 $(document.body).on('mouseenter','.state_dropdown_item',function(event){
     event.preventDefault();
     var i = $(this).index();
@@ -460,7 +476,8 @@ $(document.body).on('mouseenter','.state_dropdown_item',function(event){
         loc = mapObj.activeRegion;
     }
     else{
-        loc = states[i-1];
+        // check for excluded states
+        loc = getStateByDropdownId(i-1,states);
     }
     mapObj.colorMap(loc);
 });
@@ -479,7 +496,8 @@ $(document.body).on('click','.state_dropdown_item',function(event){
         loc = mapObj.activeRegion;
     }
     else{
-        loc = states[i-1];
+        // check for excluded states
+        loc = getStateByDropdownId(i-1,states);
     }
     var text = $(this).html();
     forecast.location = loc.toLowerCase();

@@ -245,7 +245,7 @@ function changeSystem(system_id,reload=true){
         mapObj.colorMap();
         setRegionDropdownText();
     }
-    
+
     setStateDropdown();
     setExtraRegionDropdown();
     if (reload){
@@ -436,10 +436,13 @@ function processData(forecast_ili, curr_ili, latest_ili){
     // baselines for states will be null
     forecast.baselines = forecast_ili[0].forecast.baselines;
 
+    // global var to contain max ili observed
+    max_actual_ili = 0.0;
     lines.currIli = [];
     for (var i = 0; i < curr_ili.length; i++){
         var week = getWeek(curr_ili[i].epiweek);
         lines.currIli.push([week, curr_ili[i].wili]);
+        max_actual_ili = Math.max(max_actual_ili,curr_ili[i].wili);
     }
 
     if(latest_ili!=null){
@@ -447,6 +450,7 @@ function processData(forecast_ili, curr_ili, latest_ili){
         for (var i = 0; i < latest_ili.length; i++){
             var week = getWeek(latest_ili[i].epiweek);
             lines.latestIli.push([week, latest_ili[i].wili]);
+            max_actual_ili = Math.max(max_actual_ili,latest_ili[i].wili);
         }
     }
 
@@ -650,7 +654,7 @@ function visualizeData(lines){
         max_height = forecast.max_height[forecast.location];
     }
     else {
-        max_height = lines.peak_ili_interval[1][1]*1.1;
+        max_height = Math.max(lines.peak_ili_interval[1][1],max_actual_ili)*1.1;
     }
     var yScale = d3.scale.linear()
         .domain([0, max_height])
