@@ -94,6 +94,30 @@ var season_meta = new Map([
         lastWeekInYear: 201752,
         iliCoverage:[201741,201821]
       }
+    ],
+    [
+      2018,
+      {
+        year:2018,
+        sys:[
+            new sysObj('st','Stat',201843,201920,true,[]),
+            new sysObj('ec','Epicast',201843,201920,false,['PA','DC','GA'])
+        ],
+        lastWeekInYear: 201852,
+        iliCoverage:[201841,201921]
+      }
+    ],
+    [
+      2019,
+      {
+        year:2019,
+        sys:[
+            new sysObj('st','Stat',201943,202020,true,[]),
+            new sysObj('ec','Epicast',201943,202020,false,['CA','DC','GA'])
+        ],
+        lastWeekInYear: 201952,
+        iliCoverage:[201941,202021]
+      }
     ]
 ]);
 
