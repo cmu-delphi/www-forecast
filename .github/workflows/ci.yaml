@@ -1,0 +1,36 @@
+on:
+  push
+
+name: ci
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          # submodules: true  # Fetch Hugo themes (true OR recursive)
+          fetch-depth: 3 # Fetch all history for .GitInfo and .Lastmod
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: www-forecast
+        run: |
+          baseRef="${GITHUB_REF#*/}"
+          baseRef="${baseRef#*/}"
+          case "${baseRef}" in
+          main)
+            awsTag="latest"
+            ;;
+          *)
+            awsTag="${baseRef//\//_}" # replace `/` with `_` in branch name
+            ;;
+          esac
+          echo "using tag: --${awsTag}--"
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$awsTag --file ./devops/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$awsTag
